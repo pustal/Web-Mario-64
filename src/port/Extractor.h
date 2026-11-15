@@ -45,10 +45,11 @@ public:
     Extraction &operator=(const Extraction &) = delete;
 
     /**
-     * Starts making @p storage's archive from its ROM.
+     * Starts making the archive (sm64.o2r in @p outputDir) from the ROM at
+     * @p romPath (.z64 order); GameFiles::PrepareExtraction() chooses both.
      * @return False (with the reason in Poll().error) if the child could not start.
      */
-    bool Start(const Storage &storage);
+    bool Start(const std::string &romPath, const std::string &outputDir);
 
     /** Reads the child's progress and checks whether it ended. Call regularly. */
     ExtractionStatus Poll();

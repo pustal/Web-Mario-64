@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <style>@font-face { font-family: "Titan One"; src: url("titan-one-latin-400-normal.woff2"); }</style>
+  <defs>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fd3f4"/>
+      <stop offset="0.55" stop-color="#bfe6f0"/>
+      <stop offset="0.85" stop-color="#ffe3a8"/>
+    </linearGradient>
+    <linearGradient id="hillBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7cc96b"/>
+      <stop offset="1" stop-color="#4fa34f"/>
+    </linearGradient>
+    <linearGradient id="hillLeft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9adf7a"/>
+      <stop offset="1" stop-color="#5db657"/>
+    </linearGradient>
+    <linearGradient id="hillFront" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8bd66f"/>
+      <stop offset="1" stop-color="#4c9e48"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fffaf0"/>
+      <stop offset="1" stop-color="#eadfca"/>
+    </linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f05a50"/>
+      <stop offset="1" stop-color="#c8333a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff6c8" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#fff6c8" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="card"><rect width="512" height="512" rx="104"/></clipPath>
+  </defs>
+  <g clip-path="url(#card)">
+    <rect width="512" height="512" fill="url(#sky)"/>
+
+    <!-- clouds -->
+    <g fill="#fffaf0" opacity="0.92">
+      <ellipse cx="96" cy="118" rx="62" ry="24"/>
+      <ellipse cx="128" cy="100" rx="38" ry="26"/>
+      <ellipse cx="74" cy="104" rx="28" ry="20"/>
+      <ellipse cx="248" cy="196" rx="52" ry="18"/>
+      <ellipse cx="270" cy="184" rx="30" ry="18"/>
+    </g>
+
+    <!-- the star, with a soft glow -->
+    <circle cx="392" cy="118" r="104" fill="url(#glow)"/>
+    <polygon points="392.0,56.0 408.5,95.3 451.0,98.8 418.6,126.7 428.4,168.2 392.0,146.0 355.6,168.2 365.4,126.7 333.0,98.8 375.5,95.3" fill="#ffc928" stroke="#ffc928" stroke-width="18" stroke-linejoin="round"/>
+    <polygon points="392.0,56.0 408.5,95.3 451.0,98.8 418.6,126.7 428.4,168.2 392.0,146.0 355.6,168.2 365.4,126.7 333.0,98.8 375.5,95.3" fill="none" stroke="#e59a12" stroke-width="5" stroke-linejoin="round" opacity="0.55"/>
+    <polygon points="386.0,78.0 393.6,97.5 414.5,98.7 398.4,112.0 403.6,132.3 386.0,121.0 368.4,132.3 373.6,112.0 357.5,98.7 378.4,97.5" fill="#fff1a6" stroke="#fff1a6" stroke-width="6" stroke-linejoin="round" opacity="0.85"/>
+
+    <!-- hills: one far on the right, the castle's on the left, the meadow in front -->
+    <ellipse cx="420" cy="372" rx="230" ry="120" fill="url(#hillBack)"/>
+    <ellipse cx="120" cy="352" rx="210" ry="128" fill="url(#hillLeft)"/>
+    <ellipse cx="256" cy="520" rx="400" ry="150" fill="url(#hillFront)"/>
+    <path d="M -10 306 Q 60 268 150 274" fill="none" stroke="#c4f0a0" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+
+    
+    <g transform="translate(118 232)">
+      <!-- shadow on the grass -->
+      <ellipse cx="0" cy="12" rx="78" ry="10" fill="#3f8a3f" opacity="0.35"/>
+      <!-- side towers -->
+      <rect x="-70" y="-58" width="30" height="70" rx="3" fill="url(#wall)"/>
+      <rect x="40" y="-58" width="30" height="70" rx="3" fill="url(#wall)"/>
+      <path d="M -76 -56 L -55 -104 L -34 -56 Z" fill="url(#roof)" stroke="#a82a31" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 34 -56 L 55 -104 L 76 -56 Z" fill="url(#roof)" stroke="#a82a31" stroke-width="2" stroke-linejoin="round"/>
+      <!-- the main hall -->
+      <rect x="-46" y="-40" width="92" height="52" rx="3" fill="url(#wall)"/>
+      <path d="M -52 -38 L 0 -70 L 52 -38 Z" fill="url(#roof)" stroke="#a82a31" stroke-width="2" stroke-linejoin="round"/>
+      <!-- the central tower -->
+      <rect x="-17" y="-104" width="34" height="76" rx="3" fill="url(#wall)"/>
+      <path d="M -23 -102 L 0 -150 L 23 -102 Z" fill="url(#roof)" stroke="#a82a31" stroke-width="2" stroke-linejoin="round"/>
+      <!-- flag -->
+      <line x1="0" y1="-150" x2="0" y2="-170" stroke="#7a5a3a" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M 1 -170 L 17 -165 L 1 -160 Z" fill="#ffc928"/>
+      <!-- windows, door, the round window of the tower -->
+      <circle cx="0" cy="-82" r="9" fill="#ffd968" stroke="#c99a2e" stroke-width="2"/>
+      <path d="M -55 -38 v -8 a 4 4 0 0 1 8 0 v 8 Z" fill="#6b84c9"/>
+      <path d="M 47 -38 v -8 a 4 4 0 0 1 8 0 v 8 Z" fill="#6b84c9"/>
+      <path d="M -30 -20 v -8 a 4 4 0 0 1 8 0 v 8 Z" fill="#6b84c9"/>
+      <path d="M 22 -20 v -8 a 4 4 0 0 1 8 0 v 8 Z" fill="#6b84c9"/>
+      <path d="M -11 12 v -18 a 11 11 0 0 1 22 0 v 18 Z" fill="#8a5a36"/>
+      <!-- a path down the hill -->
+      <path d="M -6 13 Q -14 34 -2 58 L 10 58 Q 0 34 6 13 Z" fill="#f2dfa8" opacity="0.9"/>
+    </g>
+
+  </g>
+
+  <g clip-path="url(#card)">
+    <!-- the meadow darkens a little under the lettering, so it reads at small sizes -->
+    <ellipse cx="256" cy="430" rx="250" ry="92" fill="#2f6e33" opacity="0.18"/>
+    <g transform="translate(228.1 304.0) rotate(-4)">
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">W</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">W</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">W</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">W</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="#fff7e0" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round" paint-order="stroke">W</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="#fff7e0" stroke="#ffffff" stroke-width="2.0" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">W</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="url(#shine)">W</text>
+</g>
+<g transform="translate(268.6 304.0) rotate(0)">
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">E</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">E</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">E</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">E</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="#fff7e0" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round" paint-order="stroke">E</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="#fff7e0" stroke="#ffffff" stroke-width="2.0" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">E</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="url(#shine)">E</text>
+</g>
+<g transform="translate(302.5 304.0) rotate(4)">
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">B</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">B</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">B</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round">B</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="#fff7e0" stroke="#3a2a5a" stroke-width="7.0" stroke-linejoin="round" paint-order="stroke">B</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="#fff7e0" stroke="#ffffff" stroke-width="2.0" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">B</text>
+<text font-family="Titan One" font-size="44" text-anchor="middle" fill="url(#shine)">B</text>
+</g>
+<g transform="translate(95.8 420.0) rotate(-12)">
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.60" y="8.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.15" y="7.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.70" y="6.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.25" y="5.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#e8383d" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round" paint-order="stroke">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#e8383d" stroke="#ffffff" stroke-width="4.7" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">M</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="url(#shine)">M</text>
+</g>
+<g transform="translate(196.7 406.5) rotate(-6)">
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.60" y="8.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.15" y="7.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.70" y="6.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.25" y="5.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#2f7de1" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round" paint-order="stroke">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#2f7de1" stroke="#ffffff" stroke-width="4.7" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">A</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="url(#shine)">A</text>
+</g>
+<g transform="translate(285.1 402.0) rotate(0)">
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.60" y="8.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.15" y="7.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.70" y="6.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.25" y="5.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#ffc928" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round" paint-order="stroke">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#ffc928" stroke="#ffffff" stroke-width="4.7" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">R</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="url(#shine)">R</text>
+</g>
+<g transform="translate(352.7 406.5) rotate(6)">
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.60" y="8.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.15" y="7.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.70" y="6.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.25" y="5.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#36b24a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round" paint-order="stroke">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#36b24a" stroke="#ffffff" stroke-width="4.7" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">I</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="url(#shine)">I</text>
+</g>
+<g transform="translate(424.5 420.0) rotate(12)">
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.60" y="8.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="3.15" y="7.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.70" y="6.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="2.25" y="5.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#e8383d" stroke="#3a2a5a" stroke-width="16.6" stroke-linejoin="round" paint-order="stroke">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="#e8383d" stroke="#ffffff" stroke-width="4.7" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">O</text>
+<text font-family="Titan One" font-size="104" text-anchor="middle" fill="url(#shine)">O</text>
+</g>
+<g transform="translate(225.6 476.0) rotate(-6)">
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="3.15" y="7.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="2.70" y="6.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="2.25" y="5.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" fill="#ffc928" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round" paint-order="stroke">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" fill="#ffc928" stroke="#ffffff" stroke-width="3.4" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">6</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" fill="url(#shine)">6</text>
+</g>
+<g transform="translate(285.6 476.0) rotate(6)">
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="3.15" y="7.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="2.70" y="6.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="2.25" y="5.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="1.80" y="4.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="1.35" y="3.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="0.90" y="2.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" x="0.45" y="1.00" fill="#3a2a5a" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" fill="#2f7de1" stroke="#3a2a5a" stroke-width="12.2" stroke-linejoin="round" paint-order="stroke">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" fill="#2f7de1" stroke="#ffffff" stroke-width="3.4" stroke-linejoin="round" paint-order="stroke" stroke-opacity="0.8">4</text>
+<text font-family="Titan One" font-size="76" text-anchor="middle" fill="url(#shine)">4</text>
+</g>
+  </g>
+</svg>

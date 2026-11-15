@@ -371,13 +371,17 @@ void UsbAccess::InspectDrive(UsbDrive *drive)
         }
     }
 
-    // The ROM: the first ROM-sized file with an N64 ROM extension in the game's folder.
+    // The game's folder: the ROM (the one the app put there first, else the first
+    // ROM-sized file with an N64 ROM extension) and the archive.
     const std::string folder = drive->mountPoint + "/" + kDriveFolder;
     for (const ModEntry &entry : ListDriveFolder(folder, drive->readable)) {
-        if (!entry.folder && entry.size == RomFile::kRomBytes && RomFile::IsRomFileName(entry.name)) {
+        if (entry.folder)
+            continue;
+        if (entry.size == RomFile::kRomBytes && RomFile::IsRomFileName(entry.name)
+            && (drive->romFile.empty() || entry.name == kDriveRomName))
             drive->romFile = entry.name;
-            break;
-        }
+        else if (entry.name == kDriveArchiveName)
+            drive->archiveBytes = entry.size;
     }
 
     const std::string modsDir = drive->mountPoint + "/" + kDriveModsFolder;
@@ -517,15 +521,16 @@ std::vector<std::string> UsbAccess::RetroArchCandidates(const UsbDrive &drive)
 
 bool UsbAccess::ImportRom(const Storage &storage, const std::vector<UsbDrive> &drives)
 {
+    // A drive's game folder holds a ROM: that one is used, nothing is copied.
+    if (std::any_of(drives.begin(), drives.end(), [](const UsbDrive &drive) { return !drive.romFile.empty(); }))
+        return false;
     const std::string tempDir = storage.IncomingDir();
     for (const UsbDrive &drive : drives) {
         if (stopSearch_.load())
             return false;
 
-        // The drive's "Super Mario 64" folder first, then its RetroArch folders.
+        // Its RetroArch folders (a ROM in a drive's "Super Mario 64" folder is used where it is).
         std::vector<std::string> candidates;
-        if (!drive.romFile.empty())
-            candidates.push_back(drive.mountPoint + "/" + kDriveFolder + "/" + drive.romFile);
         Log::Printf("looking for the ROM in roms/n64 and roms/nintendo64 on %s", drive.mountPoint.c_str());
         for (const std::string &path : RetroArchCandidates(drive))
             candidates.push_back(path);
@@ -733,6 +738,46 @@ std::string UsbAccess::MoveWithRoot(const std::string &sourcePath, const std::st
         return {};
     return "Root could not move the file onto the drive.";
 }
+
+std::string UsbAccess::CopyFileTo(const std::string &source, const std::string &destination,
+                                  const std::function<void(std::uint64_t)> &onProgress)
+{
+    const std::string folder = fs::path(destination).parent_path().string();
+    std::FILE *in            = access(folder.c_str(), W_OK) == 0 ? std::fopen(source.c_str(), "rb") : nullptr;
+    if (in) {
+        std::FILE *out = std::fopen(destination.c_str(), "wb");
+        if (!out) {
+            std::fclose(in);
+            return "Could not create " + destination + ".";
+        }
+        std::vector<char> buffer(1u << 20);
+        std::uint64_t copied = 0;
+        bool ok              = true;
+        std::size_t length   = 0;
+        while ((length = std::fread(buffer.data(), 1, buffer.size(), in)) > 0) {
+            if (std::fwrite(buffer.data(), 1, length, out) != length) {
+                ok = false; // disk full or I/O error
+                break;
+            }
+            copied += length;
+            if (onProgress)
+                onProgress(copied);
+        }
+        ok = ok && !std::ferror(in) && std::fflush(out) == 0 && fsync(fileno(out)) == 0;
+        std::fclose(in);
+        std::fclose(out);
+        return ok ? std::string() : "The copy could not be written (is the destination full?).";
+    }
+    if (!Root().Available())
+        return "The app cannot read the file or write there, and has no root access.";
+    // Readable by the app afterwards (the TV's own copies are read by the game).
+    if (RunAsRoot("cp -f " + ShellQuote(source) + " " + ShellQuote(destination) + " && chmod 644 " + ShellQuote(destination)
+                  + " && sync"))
+        return {};
+    return "Root could not copy the file there (is the destination full?).";
+}
+
+bool UsbAccess::IsMountPoint(const std::string &path) { return IsMountedAt(path); }
 
 bool UsbAccess::RemoveFile(const std::string &path)
 {

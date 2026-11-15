@@ -80,15 +80,26 @@
       <h2>Game</h2>
       <p id="game-line"></p>
       <progress id="extract-progress" class="hidden" max="100" value="0"></progress>
+      <p id="files-line" class="dim"></p>
       <p class="dim">
         The game is made on the TV from your own Super Mario 64 ROM (USA or Japan; <code>.z64</code>, <code>.n64</code>
         or <code>.v64</code>, 8 MB). The TV turns it into the game's archive once, which takes a minute or two.
-        The ROM can also come from a USB drive: a folder named <code id="rom-folder">Super Mario 64</code>, or RetroArch's
-        <code>roms/n64</code> folder (a file with "mario" in its name).
+        The ROM and the archive (about 18 MB together) can stay on the TV or on a USB drive, in a folder named
+        <code id="rom-folder">Super Mario 64</code>: the archive is made next to the ROM. A ROM can also come from
+        RetroArch's <code>roms/n64</code> folder on a drive (a file with "mario" in its name); it is copied to the TV.
       </p>
       <div class="row">
+        <label for="rom-target">Keep the ROM on</label>
+        <select id="rom-target"></select>
         <label class="button" for="rom-file">Upload the ROM</label>
         <input id="rom-file" type="file" accept=".z64,.n64,.v64">
+      </div>
+      <div class="row hidden" id="move-row">
+        <label for="move-target">Move the game files to</label>
+        <select id="move-target"></select>
+        <button id="files-move" type="button" class="secondary">Move</button>
+      </div>
+      <div class="row">
         <button id="archive-rebuild" type="button" class="secondary hidden">Make the archive again</button>
         <button id="rom-remove" type="button" class="secondary hidden">Remove the ROM</button>
       </div>
@@ -154,14 +165,17 @@
 /**
  * @typedef {{ name: string, size: number, folder: boolean }} Mod
  * @typedef {{ mount: string, label: string, spaceKnown: boolean, freeBytes: number, totalBytes: number,
- *             readable: boolean, writable: boolean, romFile: string, modsFolder: boolean, mods: Mod[] }} Drive
+ *             readable: boolean, writable: boolean, romFile: string, archiveBytes: number, modsFolder: boolean,
+ *             mods: Mod[] }} Drive
  * @typedef {{ process: boolean, homebrewChannel: boolean, detail: string }} RootState
  * @typedef {{ running: boolean, finished: boolean, succeeded: boolean, done: number, total: number, error: string }} Extraction
  * @typedef {{ version: string, mode: 'setup'|'game', persistent: boolean, freeBytes: number,
  *             safetyMarginBytes: number, driveFolder: string, restartPending: boolean, crashedLastTime: boolean,
  *             event: { serial: number, text: string }, progress: { busy: boolean, what: string, done: number, total: number },
- *             root: RootState, rom: { present: boolean, name: string, importedFrom: string },
- *             archive: { present: boolean, size: number, rebuildPending: boolean }, extraction: Extraction,
+ *             root: RootState,
+ *             rom: { present: boolean, name: string, importedFrom: string, place: string, placeLabel: string },
+ *             archive: { present: boolean, linked: boolean, size: number, place: string, placeLabel: string,
+ *                        rebuildPending: boolean }, extraction: Extraction,
  *             mods: Mod[], drives: Drive[] }} Status
  * @typedef {{ path: string, size: number, mtime: number }} SaveFile
  * @typedef {{ value: string, label: string, free: number }} Target
@@ -343,22 +357,41 @@ function renderGame(status) {
   bar.classList.toggle('hidden', !extraction.running);
   if (extraction.running) {
     bar.value = extraction.total > 0 ? 100 * extraction.done / extraction.total : 0;
-    say(byId('game-line'), 'Preparing the game from ' + (status.rom.name || 'the ROM') + '... '
+    say(byId('game-line'), 'Preparing the game from ' + (status.rom.name || 'the ROM') + ' on ' + status.rom.placeLabel + '... '
       + (extraction.total > 0 ? Math.floor(100 * extraction.done / extraction.total) + '%' : ''), '');
   } else if (extraction.finished && !extraction.succeeded) {
-    say(byId('game-line'), 'The game could not be prepared from this ROM: ' + extraction.error + ' Upload another copy.', 'warn');
+    say(byId('game-line'), 'The game could not be prepared from this ROM: ' + extraction.error, 'warn');
   } else if (status.archive.present) {
-    say(byId('game-line'), 'Ready (archive ' + humanBytes(status.archive.size) + ')'
+    say(byId('game-line'), 'Ready'
       + (status.rom.present ? ', made from ' + (status.rom.name || 'your ROM') : '')
-      + (status.rom.importedFrom ? ', copied from ' + status.rom.importedFrom : '')
+      + (status.rom.importedFrom ? ' (copied from ' + status.rom.importedFrom + ')' : '')
       + (status.archive.rebuildPending ? '. It is made again from the ROM at the next start.' : '.'), 'ok');
   } else if (status.rom.present) {
-    say(byId('game-line'), (status.rom.name || 'The ROM') + ' is on the TV; the game is prepared from it.', '');
+    say(byId('game-line'), (status.rom.name || 'The ROM') + ' is on ' + status.rom.placeLabel + '; the game is prepared from it.', '');
   } else {
     say(byId('game-line'), 'No ROM yet.', 'warn');
   }
+
+  /** @type {string[]} */
+  const where = [];
+  if (status.archive.present && status.rom.present && status.archive.place === status.rom.place) {
+    where.push('the ROM and the archive (' + humanBytes(status.archive.size + ROM_BYTES) + ') are on ' + status.archive.placeLabel);
+  } else {
+    if (status.archive.present) where.push('the archive (' + humanBytes(status.archive.size) + ') is on ' + status.archive.placeLabel);
+    if (status.rom.present) where.push('the ROM (8 MB) is on ' + status.rom.placeLabel);
+  }
+  say(byId('files-line'), where.length ? 'Game files: ' + where.join(', ') + '.' : '', 'dim');
+
   byId('archive-rebuild').classList.toggle('hidden', !(status.rom.present && status.archive.present && status.mode === 'game'));
   byId('rom-remove').classList.toggle('hidden', !status.rom.present || extraction.running);
+  if (working) return;
+  fillTargets(selectById('rom-target'), targets(status, status.driveFolder));
+  // Moving: every place the files are not all in already.
+  const moveTargets = targets(status, status.driveFolder).filter((target) =>
+    (status.archive.present && status.archive.place !== target.value) || (status.rom.present && status.rom.place !== target.value));
+  fillTargets(selectById('move-target'), moveTargets);
+  byId('move-row').classList.toggle('hidden', moveTargets.length === 0 || extraction.running
+    || !(status.archive.present || status.rom.present));
 }
 
 /** @param {Status} status */
@@ -414,7 +447,7 @@ function renderRootAndDrives(status) {
   list.replaceChildren();
   if (status.drives.length === 0) {
     const row = document.createElement('tr');
-    const empty = cell('No USB drive found. Plug one into the TV to bring the ROM or keep mods on it.');
+    const empty = cell('No USB drive found. Plug one into the TV to keep the game files or mods on it.');
     empty.className = 'dim';
     row.append(empty);
     list.append(row);
@@ -428,6 +461,7 @@ function renderRootAndDrives(status) {
       : rootAvailable(status) ? 'the app reads and writes it through root' : 'the app cannot use it without root access';
     const holds = [];
     if (drive.romFile) holds.push('ROM (' + drive.romFile + ')');
+    if (drive.archiveBytes > 0) holds.push('game archive (' + humanBytes(drive.archiveBytes) + ')');
     if (drive.mods.length > 0) holds.push(drive.mods.length + (drive.mods.length === 1 ? ' mod' : ' mods'));
     row.append(cell('USB ' + drive.label + ': ' + space + '; ' + access + '.'
       + (holds.length ? ' Holds: ' + holds.join(', ') + '.' : '')));
@@ -444,9 +478,10 @@ async function uploadRom(file) {
     say(message, file.name + ' is ' + humanBytes(file.size) + '; a Super Mario 64 ROM is exactly 8 MB.', 'warn');
     return;
   }
+  const drive = selectById('rom-target').value || 'internal';
   working = true;
   say(message, 'Uploading ' + file.name + '...');
-  const result = await putWithProgress('/api/rom', file, (fraction) => {
+  const result = await putWithProgress('/api/rom?drive=' + encodeURIComponent(drive), file, (fraction) => {
     say(message, 'Uploading ' + file.name + '... ' + Math.floor(fraction * 100) + '%');
   });
   working = false;
@@ -457,9 +492,22 @@ async function uploadRom(file) {
 }
 
 async function removeRom() {
-  if (!confirm('Remove the ROM from the TV? The game keeps running from its archive, but cannot be prepared again without it.')) return;
+  const place = lastStatus ? lastStatus.rom.placeLabel : 'the TV';
+  if (!confirm('Remove the ROM from ' + place + '? The game keeps running from its archive, but cannot be prepared again without it.')) return;
   const response = await api('/api/rom', { method: 'DELETE' });
   say(byId('rom-message'), response.ok ? 'ROM removed.' : await response.text(), response.ok ? 'ok' : 'warn');
+  await refreshStatus().catch(() => {});
+}
+
+async function moveGameFiles() {
+  const drive = selectById('move-target').value;
+  if (!drive) return;
+  const message = byId('rom-message');
+  working = true;
+  say(message, 'Moving the game files...');
+  const response = await api('/api/gamefiles/move?drive=' + encodeURIComponent(drive), { method: 'POST' });
+  working = false;
+  say(message, response.ok ? 'The game files were moved.' : await response.text(), response.ok ? 'ok' : 'warn');
   await refreshStatus().catch(() => {});
 }
 
@@ -592,6 +640,7 @@ modInput.addEventListener('change', () => {
 });
 byId('rom-remove').addEventListener('click', removeRom);
 byId('archive-rebuild').addEventListener('click', rebuildArchive);
+byId('files-move').addEventListener('click', moveGameFiles);
 byId('restart').addEventListener('click', restartGame);
 
 setInterval(() => {

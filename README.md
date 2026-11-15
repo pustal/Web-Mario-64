@@ -2,7 +2,7 @@
 
 # Web Mario 64
 
-**Version 1.0.0** · Super Mario 64 for LG webOS TVs, built from
+**Version 1.1.0** · Super Mario 64 for LG webOS TVs, built from
 [Ghostship](https://github.com/HarbourMasters/Ghostship), HarbourMasters' PC port of the Super Mario 64
 decompilation, as a **native** app (SDL2, OpenGL ES 3), with a few TV-friendly extras:
 
@@ -12,9 +12,10 @@ decompilation, as a **native** app (SDL2, OpenGL ES 3), with a few TV-friendly e
   Ghostship's own extractor: no PC step and no SSH.
 - **Mods and saves** are managed on the same page: upload Ghostship mods (`.o2r`/`.otr` archives,
   such as texture packs), download a backup of your saves or restore one.
-- **USB drives.** The ROM can come from a USB drive (also from a RetroArch-style `roms/n64` folder), and
-  mods can live on a drive and be moved between the TV and a drive from the page. On rooted TVs, drives
-  the app cannot reach on its own are used through root.
+- **USB drives.** The game files (your ROM and the archive made from it, about 18 MB) can live on a USB
+  drive instead of the TV: the archive is then made on the drive, and the page moves the files between
+  the TV and a drive. Mods can live on a drive too, and a ROM can come from a RetroArch-style
+  `roms/n64` folder. On rooted TVs, drives the app cannot reach on its own are used through root.
 - **Plays with the remote.** Controllers work as usual; the remote is mapped too (below).
 - **Back opens the menu** at any time, pausing the game: Resume, Game settings (Ghostship's own
   settings menu), Restart the game and Exit, with the transfer page's address and PIN, where the game
@@ -51,12 +52,15 @@ The TV shows an address such as `http://192.168.1.20:47821` and a 4-digit PIN. O
 phone or computer on the same network, enter the PIN and upload the ROM. The TV then makes the game's
 archive from it (a progress bar shows it; it takes a minute or two) and the game starts.
 
-Instead, you can put the ROM on a USB drive, in a folder named **`Super Mario 64`**, and plug it in: the
-setup screen finds it. A drive set up for RetroArch works as it is: a Super Mario 64 ROM in its
-`roms/n64` or `roms/nintendo64` folder (see [USB drives](#usb-drives)) is used too.
+To keep the game files off the TV, choose a USB drive under **Keep the ROM on** before uploading: the ROM
+goes into the drive's **`Super Mario 64`** folder and the archive is made next to it. Or put the ROM in
+that folder yourself and plug the drive in: the setup screen finds it and makes the archive there. A
+drive set up for RetroArch works as it is: a Super Mario 64 ROM in its `roms/n64` or `roms/nintendo64`
+folder (see [USB drives](#usb-drives)) is copied to the TV.
 
-The ROM is kept on the TV (in the app's own storage), so the archive can be made again later, for
-example after an update of the app (**Make the archive again** on the page).
+The ROM is kept next to the archive, so the archive can be made again later, for example after an
+update of the app (**Make the archive again** on the page). **Move the game files to** moves both
+between the TV and a drive at any time, even while the game runs (the next start uses the new place).
 
 ## Remote control
 
@@ -84,7 +88,8 @@ on top.
 The page (port 47821, or the next free one) answers only devices on your local network, and only with the
 PIN shown on the TV. It shows:
 
-- **Game**: upload the ROM (or remove it), the archive's state, the progress while it is made, and
+- **Game**: where the ROM and the archive are, upload the ROM to the TV or a USB drive (or remove it),
+  move the game files between the TV and a drive, the progress while the archive is made, and
   **Make the archive again**.
 - **Mods**: upload `.o2r`/`.otr` mods to the TV or a USB drive, move or remove them. Ghostship loads them
   at start-up; turn them on and off in its menu (Game settings, Mods).
@@ -101,11 +106,18 @@ A ROM, mod or save backup received while the game runs is used when it starts ag
 A drive keeps the game's files in its `Super Mario 64` folder:
 
 ```
-Super Mario 64/<rom>.z64, .n64 or .v64     the ROM (any name)
+Super Mario 64/<rom>.z64, .n64 or .v64     the ROM (any name; the app names the ones it puts there baserom.z64)
+Super Mario 64/sm64.o2r                    the game's archive, made from that ROM
 Super Mario 64/mods/                       mods (.o2r/.otr archives or folders)
 ```
 
-**RetroArch folders.** When there is no ROM on the TV or in a `Super Mario 64` folder, the app also looks
+**Game files on a drive.** A ROM in a drive's `Super Mario 64` folder is used where it is, and the archive
+is made next to it (written there directly, or made on the TV and moved there by root when the app cannot
+write to the drive). At start-up the app links a drive's archive where the game reads it; the TV's own
+archive, if there is one, is used first. Without the drive the game cannot start: the TV waits on the setup
+screen until the drive is back.
+
+**RetroArch folders.** When there is no ROM on the TV or in a drive's `Super Mario 64` folder, the app also looks
 in the RetroArch-style `roms/n64` and `roms/nintendo64` folders at the root of each drive (any
 capitalisation, and up to two folder levels below them) for `.z64`, `.n64` and `.v64` files with "mario"
 in their name (any capitalisation). An 8 MB file that is a supported ROM is checked and **copied** to the
@@ -122,8 +134,9 @@ used through root. Saves always stay on the TV.
 Everything is in the app's own storage (`$HOME/data`), which webOS removes with the app:
 
 ```
-ship/              Ghostship's folder: sm64.o2r (made from the ROM), mods/, saves/, ghostship.cfg.json, logs/
-rom/baserom.z64    your ROM, in .z64 byte order
+ship/              Ghostship's folder: sm64.o2r (the archive, or a link to a drive's), mods/, saves/,
+                   ghostship.cfg.json, logs/
+rom/baserom.z64    your ROM, in .z64 byte order (when the game files are on the TV)
 transfer_pin.txt   the transfer page's PIN (delete it for a new one)
 port-log.txt       the port's log (port-log-previous.txt: the launch before)
 ```
@@ -147,6 +160,10 @@ Without the webOS toolchain, `cmake -B build -G Ninja && cmake --build build` bu
 desktop Linux (system SDL2 and OpenGL), which runs from `build/ghostship`: handy for working on the
 transfer page, the setup screen and the menu. `WM64_DATA_DIR` sets its data folder and `WM64_USB_ROOT` a
 folder whose subfolders stand in for USB drives.
+
+The logo and the icons come from `scripts/make-logo.py` (an SVG drawn in code, rendered with Chromium
+through Python Playwright): `python3 scripts/make-logo.py <titan-one.woff2>`, with the Titan One font
+(for example from `npm pack @fontsource/titan-one`).
 
 How it fits together:
 

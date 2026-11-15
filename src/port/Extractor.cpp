@@ -55,10 +55,10 @@ Extraction::~Extraction()
         close(pipe_);
 }
 
-bool Extraction::Start(const Storage &storage)
+bool Extraction::Start(const std::string &romPath, const std::string &outputDir)
 {
     status_  = ExtractionStatus{};
-    archive_ = storage.ArchivePath();
+    archive_ = outputDir + "/sm64.o2r";
     std::error_code ec;
     std::filesystem::remove(archive_, ec);
 
@@ -72,9 +72,9 @@ bool Extraction::Start(const Storage &storage)
     // Everything the child needs is prepared before fork(): it only calls
     // async-signal-safe functions until execv().
     const std::string self   = "/proc/self/exe";
-    const std::string rom    = storage.RomPath();
+    const std::string rom    = romPath;
     const std::string assets = ExecutableDir();
-    const std::string output = storage.ShipDir();
+    const std::string output = outputDir;
     std::vector<char *> args = { const_cast<char *>(self.c_str()), const_cast<char *>(kChildFlag), const_cast<char *>(rom.c_str()),
                                  const_cast<char *>(assets.c_str()), const_cast<char *>(output.c_str()), nullptr };
 

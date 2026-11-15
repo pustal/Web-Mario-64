@@ -6,9 +6,11 @@
  * "drive" is "internal" (the TV, the default) or a USB drive's mount point.
  *   GET    /                               the transfer page (web/index.html, embedded at build time)
  *   GET    /api/status                     JSON: ROM, archive, extraction, mods, drives, root, space, progress
- *   PUT    /api/rom                        raw body = a Super Mario 64 ROM (.z64, .n64 or .v64)
- *   DELETE /api/rom                        removes the kept ROM (the archive stays, so the game still runs)
+ *   PUT    /api/rom?drive=                 raw body = a Super Mario 64 ROM (.z64, .n64 or .v64), kept on the TV
+ *                                          or in a drive's game folder (the archive is then made there)
+ *   DELETE /api/rom                        removes the ROM in use (the archive stays, so the game still runs)
  *   POST   /api/archive/rebuild            makes the archive again from the ROM at the next start
+ *   POST   /api/gamefiles/move?drive=      moves the ROM and the archive to the TV or a drive
  *   PUT    /api/mods/:name?drive=          raw body = a mod (.o2r or .otr archive)
  *   POST   /api/mods/:name/move?from=&drive=   moves a mod between the TV and a drive
  *   DELETE /api/mods/:name?drive=          removes a mod
@@ -21,6 +23,7 @@
  */
 #include "TransferServer.h"
 
+#include "GameFiles.h"
 #include "Log.h"
 #include "MenuOverlay.h"
 #include "NetInfo.h"
@@ -201,46 +204,6 @@ bool ParseTarget(const std::string &drive, Storage &storage, UsbAccess &usb, Tar
 }
 
 
-/**
- * Copies @p source to @p destination (between the TV and a drive): directly,
- * reporting progress, when the app may read the one and write the other's
- * folder, else with root. @return Empty string on success, otherwise the reason.
- */
-std::string CopyFile(UsbAccess &usb, const std::string &source, const std::string &destination,
-                     const std::function<void(std::uint64_t)> &onProgress)
-{
-    const std::string folder = fs::path(destination).parent_path().string();
-    std::FILE *in            = access(folder.c_str(), W_OK) == 0 ? std::fopen(source.c_str(), "rb") : nullptr;
-    if (in) {
-        std::FILE *out = std::fopen(destination.c_str(), "wb");
-        if (!out) {
-            std::fclose(in);
-            return "Could not create " + destination + ".";
-        }
-        std::vector<char> buffer(1u << 20);
-        std::uint64_t copied = 0;
-        bool ok              = true;
-        std::size_t length   = 0;
-        while ((length = std::fread(buffer.data(), 1, buffer.size(), in)) > 0) {
-            if (std::fwrite(buffer.data(), 1, length, out) != length) {
-                ok = false; // disk full or I/O error
-                break;
-            }
-            copied += length;
-            onProgress(copied);
-        }
-        ok = ok && !std::ferror(in) && std::fflush(out) == 0 && fsync(fileno(out)) == 0;
-        std::fclose(in);
-        std::fclose(out);
-        return ok ? std::string() : "The copy could not be written (is the destination full?).";
-    }
-    if (!usb.Root().Available())
-        return "The app cannot read the file or write there, and has no root access.";
-    if (usb.RunAsRoot("cp -f " + UsbAccess::ShellQuote(source) + " " + UsbAccess::ShellQuote(destination) + " && sync"))
-        return {};
-    return "Root could not copy the file there (is the destination full?).";
-}
-
 /** Whether the archive at @p path starts like one Ghostship reads: a zip (.o2r) or an MPQ (.otr). */
 bool LooksLikeModArchive(const std::string &path)
 {
@@ -303,8 +266,8 @@ std::string LoadOrCreatePin(const Storage &storage)
     return buffer;
 }
 
-TransferServer::TransferServer(Storage &storage, UsbAccess &usb, std::string pin)
-    : storage_(storage), usb_(usb), pin_(std::move(pin))
+TransferServer::TransferServer(Storage &storage, UsbAccess &usb, GameFiles &gameFiles, std::string pin)
+    : storage_(storage), usb_(usb), gameFiles_(gameFiles), pin_(std::move(pin))
 {
 }
 
@@ -414,7 +377,12 @@ void TransferServer::RegisterRoutes()
         }
         const RootStatus root              = usb_.Root();
         const std::vector<UsbDrive> drives = usb_.ListDrives();
-        const std::string romName          = storage_.HasRom() ? KeptRomName(storage_.RomPath()) : std::string();
+        const GameFilesState files         = gameFiles_.StateFor(drives);
+        const std::string romName = files.rom.present && files.rom.readable ? KeptRomName(files.rom.path) : std::string();
+        const auto place          = [](const GameFilePlace &file) {
+            return ",\"place\":\"" + JsonEscape(file.drive.empty() ? std::string(kInternal) : file.drive) + "\",\"placeLabel\":\""
+                   + JsonEscape(file.drive.empty() ? std::string("TV") : "USB " + file.driveLabel) + "\"";
+        };
 
         std::ostringstream json;
         json << "{\"version\":\"" << WM64_VERSION << "\""
@@ -429,10 +397,10 @@ void TransferServer::RegisterRoutes()
              << "\",\"done\":" << status.doneBytes << ",\"total\":" << status.totalBytes << "}"
              << ",\"root\":{\"process\":" << JsonBool(root.runningAsRoot) << ",\"homebrewChannel\":"
              << JsonBool(root.homebrewChannel) << ",\"detail\":\"" << JsonEscape(root.detail) << "\"}"
-             << ",\"rom\":{\"present\":" << JsonBool(storage_.HasRom()) << ",\"name\":\"" << JsonEscape(romName) << "\""
-             << ",\"importedFrom\":\"" << JsonEscape(usb_.RomImportedFrom()) << "\"}"
-             << ",\"archive\":{\"present\":" << JsonBool(storage_.HasArchive())
-             << ",\"size\":" << Storage::FileSize(storage_.ArchivePath())
+             << ",\"rom\":{\"present\":" << JsonBool(files.rom.present) << ",\"name\":\"" << JsonEscape(romName) << "\""
+             << ",\"importedFrom\":\"" << JsonEscape(usb_.RomImportedFrom()) << "\"" << place(files.rom) << "}"
+             << ",\"archive\":{\"present\":" << JsonBool(files.archive.present) << ",\"linked\":" << JsonBool(storage_.HasArchive())
+             << ",\"size\":" << files.archive.bytes << place(files.archive)
              << ",\"rebuildPending\":" << JsonBool(Storage::FileSize(storage_.RebuildMarkerPath()) > 0
                                                    || std::filesystem::exists(storage_.RebuildMarkerPath())) << "}"
              << ",\"extraction\":{\"running\":" << JsonBool(extraction.running) << ",\"finished\":" << JsonBool(extraction.finished)
@@ -447,7 +415,7 @@ void TransferServer::RegisterRoutes()
                  << JsonEscape(drive.label) << "\",\"spaceKnown\":" << JsonBool(drive.spaceKnown)
                  << ",\"freeBytes\":" << drive.freeBytes << ",\"totalBytes\":" << drive.totalBytes
                  << ",\"readable\":" << JsonBool(drive.readable) << ",\"writable\":" << JsonBool(drive.writable)
-                 << ",\"romFile\":\"" << JsonEscape(drive.romFile) << "\""
+                 << ",\"romFile\":\"" << JsonEscape(drive.romFile) << "\",\"archiveBytes\":" << drive.archiveBytes
                  << ",\"modsFolder\":" << JsonBool(drive.modsFolder) << ",\"mods\":" << ModsJson(drive.mods) << "}";
             first = false;
         }
@@ -506,11 +474,28 @@ void TransferServer::RegisterRomRoutes()
             return Fail(res, 415, "That is not a Super Mario 64 ROM: it must be exactly 8 MB ("
                                       + std::to_string(RomFile::kRomBytes) + " bytes), this file has " + std::to_string(expected) + ".");
         }
-        // The ROM, then the archive made from it.
-        const std::uint64_t needed = expected + Storage::kArchiveSpaceBytes + Storage::kSafetyMarginBytes;
-        if (needed > storage_.FreeBytes()) {
+        // Where it is kept: the TV, or a drive's game folder (the archive is then made there too).
+        const std::string driveParam = req.get_param_value("drive");
+        const std::string drive      = driveParam == kInternal ? std::string() : driveParam;
+        const std::uint64_t needed   = expected + Storage::kArchiveSpaceBytes + Storage::kSafetyMarginBytes;
+        if (drive.empty() && needed > storage_.FreeBytes()) {
             return Fail(res, 507, "Not enough space on the TV: the ROM and the game archive made from it need "
-                                      + HumanBytes(needed) + " (including a safety margin), " + HumanBytes(storage_.FreeBytes()) + " is free.");
+                                      + HumanBytes(needed) + " (including a safety margin), " + HumanBytes(storage_.FreeBytes())
+                                      + " is free. Choose a USB drive instead.");
+        }
+        if (!drive.empty()) {
+            UsbDrive target;
+            if (!usb_.FindDrive(drive, &target))
+                return Fail(res, 400, "That USB drive is not connected.");
+            if (!target.writable && !usb_.Root().Available())
+                return Fail(res, 403, "The app cannot write to this USB drive and has no root access.");
+            if (!target.spaceKnown || needed > target.freeBytes) {
+                return Fail(res, 507, "Not enough space on USB " + target.label + ": the ROM and the game archive made from it need "
+                                          + HumanBytes(needed) + " (including a safety margin).");
+            }
+            // The ROM is checked on the TV before it goes to the drive.
+            if (expected + Storage::kSafetyMarginBytes > storage_.FreeBytes())
+                return Fail(res, 507, "Not enough space on the TV to check the ROM before it goes to the drive.");
         }
         if (busy_.exchange(true))
             return Fail(res, 409, "Another upload or move is already running.");
@@ -534,26 +519,28 @@ void TransferServer::RegisterRomRoutes()
             return Fail(res, 400, "The upload was interrupted.");
         }
 
-        std::string error;
-        const std::string name = RomFile::Install(std::move(data), storage_.RomPath(), &error);
-        if (name.empty()) {
-            PublishEvent("That file is not a supported Super Mario 64 ROM.");
-            return Fail(res, 415, error);
+        std::string name;
+        const std::string error = gameFiles_.StoreRom(std::move(data), drive, &name);
+        if (!error.empty()) {
+            PublishEvent(name.empty() ? "That file is not a supported Super Mario 64 ROM." : error);
+            return Fail(res, name.empty() ? 415 : 500, error);
         }
+        const std::string where = drive.empty() ? std::string("the TV") : "USB " + std::filesystem::path(drive).filename().string();
         if (!setupMode_.load()) {
             // The running game holds its archive open: it is made again at the next start.
             std::ofstream(storage_.RebuildMarkerPath()) << "new ROM\n";
             MarkRestartPending();
-            PublishEvent(name + " received. The game's archive is made from it when the game starts again.");
+            PublishEvent(name + " received on " + where + ". The game's archive is made from it when the game starts again.");
             return res.set_content("staged", kTextType);
         }
-        PublishEvent(name + " received. The TV is preparing the game...");
+        PublishEvent(name + " received on " + where + ". The TV is preparing the game...");
         res.set_content("installed", kTextType);
     });
 
     server.Delete("/api/rom", [this](const httplib::Request &, httplib::Response &res) {
-        if (!usb_.RemoveFile(storage_.RomPath()))
-            return Fail(res, 500, "Could not remove the ROM.");
+        const std::string error = gameFiles_.RemoveRom();
+        if (!error.empty())
+            return Fail(res, 500, error);
         std::error_code ec;
         std::filesystem::remove(storage_.RebuildMarkerPath(), ec);
         PublishEvent(storage_.HasArchive() ? "ROM removed. The game keeps running from its archive."
@@ -562,14 +549,34 @@ void TransferServer::RegisterRomRoutes()
     });
 
     server.Post("/api/archive/rebuild", [this](const httplib::Request &, httplib::Response &res) {
-        if (!storage_.HasRom())
-            return Fail(res, 409, "There is no ROM on the TV to make the archive from. Upload it first.");
+        if (!gameFiles_.HasRom())
+            return Fail(res, 409, "There is no ROM to make the archive from. Upload it first.");
         if (setupMode_.load())
             return Fail(res, 409, "The archive is being made now.");
         std::ofstream(storage_.RebuildMarkerPath()) << "requested\n";
         MarkRestartPending();
         PublishEvent("The game's archive is made again from the ROM when the game starts again.");
         res.set_content("staged", kTextType);
+    });
+
+    server.Post("/api/gamefiles/move", [this](const httplib::Request &req, httplib::Response &res) {
+        const std::string driveParam = req.get_param_value("drive");
+        const std::string drive      = driveParam == kInternal ? std::string() : driveParam;
+        if (busy_.exchange(true))
+            return Fail(res, 409, "Another upload or move is already running.");
+        BusyGuard busyGuard(busy_);
+        const std::string where = drive.empty() ? std::string("the TV") : "USB " + std::filesystem::path(drive).filename().string();
+        PublishEvent("Moving the game files to " + where + "...");
+        const std::string error = gameFiles_.MoveTo(drive, [this](std::uint64_t done, std::uint64_t total) {
+            SetProgress(true, "Game files", done, total);
+        });
+        SetProgress(false, "Game files", 0, 0);
+        if (!error.empty()) {
+            PublishEvent(error);
+            return Fail(res, 500, error);
+        }
+        PublishEvent("The game files are on " + where + " now.");
+        res.set_content("moved", kTextType);
     });
 }
 
@@ -713,7 +720,7 @@ void TransferServer::RegisterModRoutes()
         fs::create_directories(target.folder, ec);
         const std::string destination = target.folder + "/" + name;
         SetProgress(true, name, 0, size);
-        const std::string copyError = CopyFile(usb_, sourcePath, destination + ".part", [this, &name, size](std::uint64_t total) {
+        const std::string copyError = usb_.CopyFileTo(sourcePath, destination + ".part", [this, &name, size](std::uint64_t total) {
             SetProgress(true, name, total, size);
         });
         SetProgress(false, name, size, size);

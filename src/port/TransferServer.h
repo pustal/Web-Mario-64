@@ -1,8 +1,9 @@
 /**
  * @file TransferServer.h
- * @brief A small HTTP server for the browser transfer page: the ROM (from
- *        which the TV makes the game's archive), mods (on the TV or a USB
- *        drive, and moving them between the two), save backups, and the logs.
+ * @brief A small HTTP server for the browser transfer page: the game files
+ *        (the ROM and the archive the TV makes from it, on the TV or a USB
+ *        drive, and moving them between the two), mods (likewise), save
+ *        backups, and the logs.
  *
  * Design notes for a TV:
  *  - Uploads are streamed straight to disk, never held in memory, and free
@@ -31,6 +32,7 @@ class Server;
 namespace wm64
 {
 
+class GameFiles;
 class Storage;
 class UsbAccess;
 
@@ -55,7 +57,7 @@ public:
      */
     static constexpr std::uint16_t kPreferredPort = 47821;
 
-    TransferServer(Storage &storage, UsbAccess &usb, std::string pin);
+    TransferServer(Storage &storage, UsbAccess &usb, GameFiles &gameFiles, std::string pin);
     ~TransferServer();
 
     TransferServer(const TransferServer &)            = delete;
@@ -100,6 +102,7 @@ private:
 
     Storage &storage_;
     UsbAccess &usb_;
+    GameFiles &gameFiles_;
     const std::string pin_;
 
     std::unique_ptr<httplib::Server> server_;

@@ -8,15 +8,17 @@
  *  2. the data folder is chosen and Ghostship is pointed at it (SHIP_HOME),
  *  3. a save backup received during the last session is restored,
  *  4. the transfer page starts (it keeps running while the game plays),
- *  5. root access is probed and the USB drives' mods are linked in,
+ *  5. root access is probed, the USB drives' mods are linked in, and so is
+ *     the game's archive when it is kept on a drive (GameFiles.h),
  *  6. without the archive (or when it must be made again), the setup screen
  *     waits for the ROM (uploaded, or found on a USB drive, searched on a
- *     thread) and makes the archive from it,
+ *     thread) and makes the archive from it, on the TV or the ROM's drive,
  * then Ghostship's own main() runs (renamed ghostship_main by
  * cmake/GhostshipWebOS.cmake). When the game quits after a restart request
  * (the menu or the transfer page), the app starts itself again.
  */
 #include "port/Extractor.h"
+#include "port/GameFiles.h"
 #include "port/Log.h"
 #include "port/MenuOverlay.h"
 #include "port/NetInfo.h"
@@ -54,7 +56,7 @@ namespace
 using namespace wm64;
 
 /** Gathers what the menu shows (called on the game's thread). */
-OverlayInfo GatherOverlayInfo(const Storage &storage, UsbAccess &usb, const TransferServer &server)
+OverlayInfo GatherOverlayInfo(const Storage &storage, UsbAccess &usb, GameFiles &gameFiles, const TransferServer &server)
 {
     OverlayInfo info;
     const std::string address = FindLanAddress();
@@ -62,9 +64,13 @@ OverlayInfo GatherOverlayInfo(const Storage &storage, UsbAccess &usb, const Tran
         info.address = "http://" + address + ":" + std::to_string(server.Port());
     info.pin = server.Pin();
 
-    info.gameSource = storage.HasArchive() ? "ready (" + HumanBytes(Storage::FileSize(storage.ArchivePath())) + " archive)" : "missing";
-    if (!storage.HasRom())
+    const GameFilesState files = gameFiles.LastState(); // the menu must not wait on the drives
+    info.gameSource = files.archive.present ? "ready (" + HumanBytes(files.archive.bytes) + " archive on " + files.archive.Describe() + ")"
+                                            : "missing";
+    if (!files.rom.present)
         info.gameSource += ", ROM not kept";
+    else if (files.rom.drive != files.archive.drive)
+        info.gameSource += ", ROM on " + files.rom.Describe();
     const std::string importedFrom = usb.RomImportedFrom();
     if (!importedFrom.empty())
         info.gameSource += ", ROM copied from " + importedFrom;
@@ -156,13 +162,14 @@ int main(int argc, char **argv)
     // 4. The transfer page, first, so it can be reached (and its logs read) even
     //    if something below takes long.
     UsbAccess usb;
-    TransferServer server(storage, usb, LoadOrCreatePin(storage));
+    GameFiles gameFiles(storage, usb);
+    TransferServer server(storage, usb, gameFiles, LoadOrCreatePin(storage));
     if (server.Start())
         Log::Printf("transfer page on port %u, PIN %s", static_cast<unsigned>(server.Port()), server.Pin().c_str());
     else
         Log::Printf("the transfer page could not start");
     server.SetCrashedLastTime(crashedLastTime);
-    MenuOverlay::SetInfoProvider([&storage, &usb, &server] { return GatherOverlayInfo(storage, usb, server); });
+    MenuOverlay::SetInfoProvider([&storage, &usb, &gameFiles, &server] { return GatherOverlayInfo(storage, usb, gameFiles, server); });
     MenuOverlay::SetGameMenuOpener(&ToggleGameMenu);
     RemoteInput::SetGameUiQuery([] {
         const std::shared_ptr<Ship::GuiWindow> menu = GameMenu();
@@ -172,17 +179,18 @@ int main(int argc, char **argv)
     // 5. Root access and the USB drives.
     usb.ProbeRoot();
     usb.PlaceContent(storage);
+    gameFiles.Place();
     Log::Printf("USB drives checked");
 
     // 6. The game's archive: made from the ROM when it is missing or must be made again.
-    const bool rebuild = std::filesystem::exists(storage.RebuildMarkerPath()) && storage.HasRom();
+    const bool rebuild = std::filesystem::exists(storage.RebuildMarkerPath()) && gameFiles.HasRom();
     if (rebuild || !storage.HasArchive()) {
         if (rebuild)
             Log::Printf("the archive is made again from the ROM");
-        if (!storage.HasRom())
+        if (!gameFiles.HasRom())
             usb.StartRomSearch(storage);
         server.SetSetupMode(true);
-        const SetupResult setup = RunSetupScreen(storage, usb, server.Port() != 0 ? &server : nullptr, SetupReason::PrepareGame);
+        const SetupResult setup = RunSetupScreen(storage, usb, gameFiles, server.Port() != 0 ? &server : nullptr, SetupReason::PrepareGame);
         if (setup != SetupResult::Ready) {
             server.Stop();
             return setup == SetupResult::Exit ? 0 : 1;
@@ -191,7 +199,7 @@ int main(int argc, char **argv)
     // The game crashed last time: hold on a screen (OK, or a countdown, starts the game), so its logs can be fetched first.
     else if (crashedLastTime) {
         server.SetSetupMode(true);
-        const SetupResult setup = RunSetupScreen(storage, usb, server.Port() != 0 ? &server : nullptr, SetupReason::AfterCrash);
+        const SetupResult setup = RunSetupScreen(storage, usb, gameFiles, server.Port() != 0 ? &server : nullptr, SetupReason::AfterCrash);
         if (setup == SetupResult::Exit) {
             server.Stop();
             return 0;

@@ -6,6 +6,7 @@
 
 #include "BitmapFont.h"
 #include "Extractor.h"
+#include "GameFiles.h"
 #include "Log.h"
 #include "NetInfo.h"
 #include "RemoteInput.h"
@@ -60,6 +61,7 @@ struct ScreenState {
     TransferStatus transfer;
     bool searching = false;        ///< A ROM search on the USB drives is running.
     ExtractionStatus extraction;   ///< The archive being made (or the last attempt).
+    std::string extractionPlace;   ///< Where it is made: "the TV" or "USB sda1".
     std::uint32_t autoStartAt = 0; ///< After a crash: when the game starts without OK (SDL ticks).
     bool starting = false;
 };
@@ -73,6 +75,8 @@ std::vector<std::string> DescribeDrives(UsbAccess &usb)
         line += drive.spaceKnown ? HumanBytes(drive.freeBytes) + " free" : std::string("space unknown");
         if (!drive.romFile.empty())
             line += ", ROM found";
+        if (drive.archiveBytes > 0)
+            line += ", game archive";
         if (!drive.mods.empty())
             line += ", " + std::to_string(drive.mods.size()) + (drive.mods.size() == 1 ? " mod" : " mods");
         lines.push_back(line);
@@ -120,7 +124,7 @@ void DrawScreen(SDL_Renderer *renderer, const TextRenderer &text, const ScreenSt
         y = kCanvasHeight / 2 - 30;
         text.DrawTextCentered(center, y, "Preparing the game from your ROM...", 1, kText);
         y += kLine;
-        text.DrawTextCentered(center, y, "This happens once and takes a minute or two.", 1, kDim);
+        text.DrawTextCentered(center, y, "This happens once and takes a minute or two (on " + state.extractionPlace + ").", 1, kDim);
         y += kLine * 2;
         constexpr int kBarWidth  = 300;
         constexpr int kBarHeight = 8;
@@ -225,7 +229,8 @@ void DrawScreen(SDL_Renderer *renderer, const TextRenderer &text, const ScreenSt
 
 } // namespace
 
-SetupResult RunSetupScreen(const Storage &storage, UsbAccess &usb, TransferServer *server, SetupReason reason)
+SetupResult RunSetupScreen(const Storage &storage, UsbAccess &usb, GameFiles &gameFiles, TransferServer *server,
+                           SetupReason reason)
 {
     if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER) != 0)
         return SetupResult::Failed;
@@ -259,13 +264,12 @@ SetupResult RunSetupScreen(const Storage &storage, UsbAccess &usb, TransferServe
     bool running                  = true;
     state.autoStartAt             = SDL_GetTicks() + kAfterCrashWaitMs;
     Extraction extraction;
-    // The ROM the last failed attempt used (its size and time): the same file is not tried again on its own.
+    ExtractionPlan plan;
+    bool extractionActive = false; // started and its end not handled yet
+    // The ROM the last failed attempt used (its place, size and time): the same file is not tried again on its own.
     std::string failedRom;
-    const auto romKey = [&storage] {
-        std::error_code ec;
-        const auto time = std::filesystem::last_write_time(storage.RomPath(), ec);
-        return ec ? std::string() : std::to_string(time.time_since_epoch().count());
-    };
+    // The ROM in use, looked up with the other information (it may list the drives with root).
+    std::string romKey = gameFiles.RomKey();
 
     while (running) {
         SDL_Event event;
@@ -289,6 +293,8 @@ SetupResult RunSetupScreen(const Storage &storage, UsbAccess &usb, TransferServe
             state.address   = FindLanAddress();
             state.freeBytes = storage.FreeBytes();
             state.usbLines  = DescribeDrives(usb);
+            if (!state.extraction.running)
+                romKey = gameFiles.RomKey();
             nextInfoRefresh = now + kInfoRefreshMs;
         }
         if (server)
@@ -302,32 +308,62 @@ SetupResult RunSetupScreen(const Storage &storage, UsbAccess &usb, TransferServe
             if (drives != knownDrives) {
                 knownDrives = drives;
                 usb.PlaceContent(storage);
-                if (!storage.HasRom())
+                gameFiles.Place();
+                romKey = gameFiles.RomKey();
+                // A drive with the game's archive: the game can start from it (unless it must be made again).
+                if (reason == SetupReason::PrepareGame && storage.HasArchive() && !std::filesystem::exists(storage.RebuildMarkerPath())) {
+                    state.starting = true;
+                    startAt        = now + kStartDelayMs;
+                }
+                else if (romKey.empty()) {
                     usb.StartRomSearch(storage);
+                }
             }
             nextUsbCheck = now + kUsbRefreshMs;
         }
 
         if (reason == SetupReason::PrepareGame && !state.starting) {
             // A ROM is there (and not the one that just failed): make the archive from it.
-            if (!state.extraction.running && storage.HasRom() && romKey() != failedRom && !usb.RomSearchRunning()) {
+            if (!state.extraction.running && !romKey.empty() && romKey != failedRom && !usb.RomSearchRunning()) {
                 std::error_code ec;
                 std::filesystem::remove(storage.RebuildMarkerPath(), ec);
-                extraction.Start(storage);
-                failedRom.clear();
+                std::string error;
+                if (gameFiles.PrepareExtraction(&plan, &error)) {
+                    state.extractionPlace = plan.drive.empty() ? std::string("the TV") : "USB " + plan.driveLabel;
+                    extraction.Start(plan.romPath, plan.outputDir);
+                    extractionActive = true;
+                    failedRom.clear();
+                }
+                else {
+                    // Shown like a failed extraction; the same ROM is not tried again on its own.
+                    state.extraction          = ExtractionStatus{};
+                    state.extraction.finished = true;
+                    state.extraction.error    = error;
+                    failedRom                 = romKey;
+                    Log::Printf("cannot make the archive: %s", error.c_str());
+                }
             }
-            state.extraction = extraction.Poll();
+            if (extractionActive) {
+                state.extraction = extraction.Poll();
+                if (state.extraction.finished && !state.extraction.running) {
+                    // Done: the archive goes in place (moved onto the drive, linked), or the leftovers go.
+                    extractionActive  = false;
+                    std::string error = gameFiles.FinishExtraction(plan, state.extraction.succeeded);
+                    if (state.extraction.succeeded && error.empty()) {
+                        state.starting = true;
+                        startAt        = now + kStartDelayMs;
+                    }
+                    else {
+                        if (!error.empty()) {
+                            state.extraction.succeeded = false;
+                            state.extraction.error     = error;
+                        }
+                        failedRom = romKey;
+                    }
+                }
+            }
             if (server)
                 server->SetExtraction(state.extraction);
-            if (state.extraction.finished && !state.extraction.running) {
-                if (state.extraction.succeeded) {
-                    state.starting = true;
-                    startAt        = now + kStartDelayMs;
-                }
-                else if (failedRom.empty()) {
-                    failedRom = romKey();
-                }
-            }
         }
         const bool autoStart = reason == SetupReason::AfterCrash && SDL_TICKS_PASSED(now, state.autoStartAt);
         if (!state.starting && autoStart) {

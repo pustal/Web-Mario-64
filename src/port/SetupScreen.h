@@ -21,6 +21,7 @@
 namespace wm64
 {
 
+class GameFiles;
 class Storage;
 class TransferServer;
 class UsbAccess;
@@ -43,9 +44,11 @@ enum class SetupReason {
  * Creates and destroys its own window; SDL video is shut down on return so
  * the game can initialise it from scratch.
  *
+ * @param gameFiles Where the ROM is and where the archive is made (TV or USB drive).
  * @param server May be null if the transfer server failed to start.
  */
-SetupResult RunSetupScreen(const Storage &storage, UsbAccess &usb, TransferServer *server, SetupReason reason);
+SetupResult RunSetupScreen(const Storage &storage, UsbAccess &usb, GameFiles &gameFiles, TransferServer *server,
+                           SetupReason reason);
 
 } // namespace wm64
 

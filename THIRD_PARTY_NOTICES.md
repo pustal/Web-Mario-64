@@ -17,7 +17,8 @@
 | [SDL_GameControllerDB](https://github.com/gabomdq/SDL_GameControllerDB) | `gamecontrollerdb.txt`, controller mappings | zlib |
 | [Khronos OpenGL ES headers](https://github.com/KhronosGroup/OpenGL-Registry) | `third_party/khronos/`, build only | Apache-2.0 / MIT |
 | [cpp-httplib](https://github.com/yhirose/cpp-httplib) 0.63.0 by yhirose | the transfer page's server (`third_party/cpp-httplib/`) | MIT (`licenses/cpp-httplib-LICENSE`) |
-| [font8x8](https://github.com/dhepper/font8x8) by Daniel Hepper | the setup screen, the menu and the icon lettering (`src/port/BitmapFont.cpp`) | Public domain |
+| [font8x8](https://github.com/dhepper/font8x8) by Daniel Hepper | the setup screen and the menu (`src/port/BitmapFont.cpp`) | Public domain |
+| [Titan One](https://fonts.google.com/specimen/Titan+One) by Rodrigo Fuenzalida | the lettering of the logo and icons (`scripts/make-logo.py`; the font is not in the repository) | SIL Open Font License 1.1 |
 
 zlib, OpenGL ES and the C library are the TV's own.
 

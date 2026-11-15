@@ -11,21 +11,25 @@
  * TVs; newer firmwares may refuse calls from apps).
  *
  * A drive keeps the game's files in its "Super Mario 64" folder:
- *   Super Mario 64/<rom>.z64, .n64 or .v64   the ROM (any supported 8 MB dump there)
+ *   Super Mario 64/<rom>.z64, .n64 or .v64   the ROM (any supported 8 MB dump there;
+ *                                            baserom.z64, the name the app gives it, first)
+ *   Super Mario 64/sm64.o2r                  the game's archive, made from that ROM
  *   Super Mario 64/mods/                     mods (.o2r/.otr archives, or folders)
- * The ROM is copied to the TV (converted to the .z64 order), where the game's
- * archive is made from it, so the game keeps working without the drive. A
+ * The ROM and the archive are used where they are (GameFiles.h decides where
+ * the game files live and links the archive in). A
  * drive's mods appear in the game's mods folder as mods/usb-<drive>/: a real
  * folder holding links to the drive's mods, or, when the app cannot read the
  * drive itself, a root bind mount of the drive's mods folder. (Ghostship
  * looks into folders in mods/ but does not follow folder links.)
  *
- * With no ROM on the TV, the app also looks in the RetroArch-style system
+ * With no ROM on the TV or in a drive's "Super Mario 64" folder, the app also
+ * looks in the RetroArch-style system
  * folders roms/n64 and roms/nintendo64 at the root of each drive (any
  * capitalisation, and two folder levels below them), at .z64, .n64 and .v64
  * files with "mario" in their name, as Webmon does. Nothing in those folders
- * is changed. Searching a large collection takes a while, so this runs on its
- * own thread (StartRomSearch()), while the setup screen is up.
+ * is changed: a supported ROM found there is copied to the TV. Searching a
+ * large collection takes a while, so this runs on its own thread
+ * (StartRomSearch()), while the setup screen is up.
  */
 #ifndef WM64_USB_ACCESS_H
 #define WM64_USB_ACCESS_H
@@ -62,6 +66,7 @@ struct UsbDrive {
     bool readable = false;            ///< The app can list it directly.
     bool writable = false;            ///< The app can create files on it directly.
     std::string romFile;              ///< A ROM-sized file in "Super Mario 64", empty when it has none.
+    std::uint64_t archiveBytes = 0;   ///< Size of "Super Mario 64/sm64.o2r" (0: none).
     bool modsFolder = false;          ///< "Super Mario 64/mods" exists.
     std::vector<ModEntry> mods;       ///< The mods in it.
 };
@@ -79,6 +84,10 @@ public:
     static constexpr const char *kDriveFolder = "Super Mario 64";
     /** The mods folder on a drive, relative to its mount point. */
     static constexpr const char *kDriveModsFolder = "Super Mario 64/mods";
+    /** The game's archive in a drive's game folder. */
+    static constexpr const char *kDriveArchiveName = "sm64.o2r";
+    /** The name the app gives a ROM it puts in a drive's game folder (.z64 order). */
+    static constexpr const char *kDriveRomName = "baserom.z64";
 
     /** Probes root access (once; it takes up to a few seconds). */
     void ProbeRoot();
@@ -99,7 +108,9 @@ public:
      * Starts looking for the ROM on the drives on a thread: in each drive's
      * "Super Mario 64" folder first, then in its RetroArch folders (see the
      * file comment). Does nothing if a search is running or the TV has a ROM.
-     * A supported ROM found is copied to @p storage's ROM path.
+     * A supported ROM found is copied to @p storage's ROM path. A ROM in a
+     * drive's game folder is not copied (it is used where it is): with one
+     * there, there is nothing to search for.
      */
     void StartRomSearch(const Storage &storage);
 
@@ -138,6 +149,18 @@ public:
      * @return Empty string on success, otherwise the reason.
      */
     std::string MoveWithRoot(const std::string &sourcePath, const std::string &destination);
+
+    /**
+     * Copies @p source to @p destination (between the TV and a drive, or two
+     * drives): directly, reporting the bytes copied so far to @p onProgress,
+     * when the app may read the one and write the other's folder, else with
+     * root. @return Empty string on success, otherwise the reason.
+     */
+    std::string CopyFileTo(const std::string &source, const std::string &destination,
+                           const std::function<void(std::uint64_t)> &onProgress);
+
+    /** Whether @p path is a mount point (spots the app's own bind mounts). */
+    static bool IsMountPoint(const std::string &path);
 
     /** Removes the file at @p path, directly or with root. @return True if it is gone. */
     bool RemoveFile(const std::string &path);
