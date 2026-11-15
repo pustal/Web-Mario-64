@@ -1,0 +1,65 @@
+Web Mario 64: rename the game's painting resource class (one definition rule)
+
+Ghostship links Torch into the game for its built-in ROM extractor. Both define
+a class named SM64::Painting: the game's resource (src/port/importer/types/
+Painting.h) and Torch's parsed painting (Torch/src/factories/sm64/
+PaintingFactory.h). Each makes std::make_shared<SM64::Painting>, so the linker
+keeps one copy of the shared-pointer control block's code for both, and the
+other class gets the wrong destructor: extracting the ROM crashes when Torch
+frees its first painting (and the game could crash when it frees its own).
+
+The game's class becomes SM64::PaintingResource; Torch's keeps its name. The
+resource is only made by its factory, so nothing else changes.
+
+diff --git a/src/port/importer/PaintingFactory.cpp b/src/port/importer/PaintingFactory.cpp
+index f48955c..4a83a94 100644
+--- a/src/port/importer/PaintingFactory.cpp
++++ b/src/port/importer/PaintingFactory.cpp
+@@ -9,7 +9,7 @@ SM64::PaintingFactoryV0::ReadResource(std::shared_ptr<Ship::File> file,
+         return nullptr;
+     }
+ 
+-    std::shared_ptr<Painting> painting = std::make_shared<Painting>(initData);
++    std::shared_ptr<PaintingResource> painting = std::make_shared<PaintingResource>(initData);
+     auto reader = std::get<std::shared_ptr<Ship::BinaryReader>>(file->Reader);
+ 
+     painting->mData.id = reader->ReadInt16();
+diff --git a/src/port/importer/types/Painting.cpp b/src/port/importer/types/Painting.cpp
+index d740704..b7f7f96 100644
+--- a/src/port/importer/types/Painting.cpp
++++ b/src/port/importer/types/Painting.cpp
+@@ -1,11 +1,11 @@
+ #include "Painting.h"
+ 
+ namespace SM64 {
+-PaintingData* Painting::GetPointer() {
++PaintingData* PaintingResource::GetPointer() {
+     return &mData;
+ }
+ 
+-size_t Painting::GetPointerSize() {
++size_t PaintingResource::GetPointerSize() {
+     return sizeof(mData);
+ }
+ } // namespace SM64
+\ No newline at end of file
+diff --git a/src/port/importer/types/Painting.h b/src/port/importer/types/Painting.h
+index 67a86e2..ac2da36 100644
+--- a/src/port/importer/types/Painting.h
++++ b/src/port/importer/types/Painting.h
+@@ -61,11 +61,13 @@ struct PaintingData {
+ 
+ namespace SM64 {
+ 
+-class Painting : public Ship::Resource<PaintingData> {
++// Not "Painting": Torch (linked into the game for the ROM extractor) has its own
++// SM64::Painting, and two classes of one name break the program (one definition rule).
++class PaintingResource : public Ship::Resource<PaintingData> {
+   public:
+     using Resource::Resource;
+ 
+-    Painting() : Resource(std::shared_ptr<Ship::ResourceInitData>()) {}
++    PaintingResource() : Resource(std::shared_ptr<Ship::ResourceInitData>()) {}
+ 
+     PaintingData* GetPointer();
+     size_t GetPointerSize();

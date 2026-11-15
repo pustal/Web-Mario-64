@@ -1,0 +1,15 @@
+{
+    "id": "@WM64_APP_ID@",
+    "version": "@PROJECT_VERSION@",
+    "vendor": "Web Mario 64",
+    "type": "native",
+    "main": "WebMario64",
+    "title": "Web Mario 64",
+    "icon": "icon.png",
+    "largeIcon": "largeIcon.png",
+    "iconColor": "#c8202c",
+    "appDescription": "Super Mario 64 (Ghostship) for webOS. Bring your own ROM.",
+    "supportTouchMode": "none",
+    "useAllMouseButtons": false,
+    "requiredACG": []
+}

@@ -1,0 +1,18 @@
+# Build output
+/build*/
+/dist/
+
+# Game data: never part of this repository. ROMs you keep here for local testing
+# (any dump format), and archives made from them.
+*.z64
+*.n64
+*.v64
+*.rom
+/sm64.o2r
+/sm64.otr
+
+# Local test data folders (WM64_DATA_DIR / WM64_USB_ROOT)
+/test-data/
+/test-usb/
+
+.DS_Store

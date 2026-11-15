@@ -1,0 +1,606 @@
+<!doctype html>
+<!--
+  Web Mario 64 (webOS) transfer page.
+  Served by the app itself (src/port/TransferServer.cpp) and embedded into the
+  binary at build time, so it must stay self-contained: no external scripts,
+  fonts or images.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Mario 64 on the TV</title>
+<style>
+  :root { --bg:#14102e; --card:#221a4a; --line:#3d3080; --text:#f4f2ee; --dim:#b4acd8; --accent:#7fd4ff; --ok:#86e07a; --warn:#ff9a6a; --title:#ff4d4d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:720px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.45rem; margin:8px 0 4px; color:var(--title); letter-spacing:.02em; }
+  h2 { font-size:1.05rem; margin:0 0 8px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
+  p { margin:6px 0; }
+  code { overflow-wrap:anywhere; }
+  .dim { color:var(--dim); font-size:.9rem; }
+  .warn { color:var(--warn); }
+  .ok { color:var(--ok); }
+  input[type=text] { font-size:1.4rem; letter-spacing:.3em; width:7em; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--text); }
+  select { font:inherit; padding:6px; border-radius:6px; background:var(--bg); color:var(--text); border:1px solid var(--line); max-width:100%; }
+  button, label.button, a.button { display:inline-block; font:inherit; padding:8px 14px; border-radius:6px; border:0; background:var(--accent); color:#06202a; font-weight:600; cursor:pointer; margin:4px 4px 4px 0; text-decoration:none; }
+  button.secondary, a.button.secondary { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  button.small { padding:4px 10px; font-size:.85rem; }
+  button:disabled { opacity:.5; cursor:default; }
+  input[type=file] { display:none; }
+  progress { width:100%; height:12px; margin-top:8px; }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; }
+  td { padding:6px 4px; border-top:1px solid var(--line); vertical-align:top; }
+  td.actions { text-align:right; }
+  td.actions button { margin:2px 0 2px 4px; }
+  td.size { text-align:right; white-space:nowrap; color:var(--dim); }
+  a { color:var(--accent); }
+  .hidden { display:none !important; }
+  .badge { display:inline-block; font-size:.75rem; padding:1px 6px; border-radius:4px; background:var(--ok); color:#0b2a08; margin-left:6px; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:6px 0; }
+  .banner { background:#5a2a12; border-color:var(--warn); }
+  footer { text-align:center; padding:8px 0 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Web Mario 64 on the TV</h1>
+  <p class="dim">Help, updates and source code:
+    <a href="https://github.com/pustal/Web-Mario-64/" target="_blank" rel="noopener">github.com/pustal/Web-Mario-64</a></p>
+
+  <section id="pin-section">
+    <h2>Enter the PIN shown on the TV</h2>
+    <p class="dim">During play, press BACK on the remote to open the menu: it shows this page's address and the PIN.</p>
+    <form id="pin-form">
+      <input id="pin-input" type="text" inputmode="numeric" maxlength="4" autocomplete="off" required>
+      <button type="submit">Connect</button>
+    </form>
+    <p id="pin-error" class="warn hidden"></p>
+  </section>
+
+  <div id="app" class="hidden">
+    <section id="restart-section" class="banner hidden">
+      <h2>Restart to use the new files</h2>
+      <p>The game reads a new ROM, mods and restored saves when it starts.</p>
+      <button id="restart" type="button">Restart the game now</button>
+      <p id="restart-message"></p>
+    </section>
+
+    <section>
+      <h2>TV status</h2>
+      <p id="mode-line">Loading...</p>
+      <p id="space-line" class="dim"></p>
+      <p id="event-line" class="dim"></p>
+      <progress id="busy-progress" class="hidden" max="100" value="0"></progress>
+    </section>
+
+    <section>
+      <h2>Game</h2>
+      <p id="game-line"></p>
+      <progress id="extract-progress" class="hidden" max="100" value="0"></progress>
+      <p class="dim">
+        The game is made on the TV from your own Super Mario 64 ROM (USA or Japan; <code>.z64</code>, <code>.n64</code>
+        or <code>.v64</code>, 8 MB). The TV turns it into the game's archive once, which takes a minute or two.
+        The ROM can also come from a USB drive: a folder named <code id="rom-folder">Super Mario 64</code>, or RetroArch's
+        <code>roms/n64</code> folder (a file with "mario" in its name).
+      </p>
+      <div class="row">
+        <label class="button" for="rom-file">Upload the ROM</label>
+        <input id="rom-file" type="file" accept=".z64,.n64,.v64">
+        <button id="archive-rebuild" type="button" class="secondary hidden">Make the archive again</button>
+        <button id="rom-remove" type="button" class="secondary hidden">Remove the ROM</button>
+      </div>
+      <p id="rom-message"></p>
+    </section>
+
+    <section>
+      <h2>Mods</h2>
+      <p class="dim">Mods are <code>.o2r</code> or <code>.otr</code> archives (texture packs, models, music), made for
+        Ghostship. They can stay on a USB drive, in <code><span id="mods-folder">Super Mario 64</span>/mods</code>.
+        The game loads them when it starts; turn them on or off in Ghostship's menu (BACK on the remote, then Game settings).</p>
+      <table><tbody id="mod-list"></tbody></table>
+      <div class="row">
+        <label for="mod-target">Upload to</label>
+        <select id="mod-target"></select>
+        <label class="button" for="mod-files">Choose mods</label>
+        <input id="mod-files" type="file" accept=".o2r,.otr" multiple>
+      </div>
+      <p id="mod-message"></p>
+    </section>
+
+    <section>
+      <h2>Saves</h2>
+      <p class="dim">The game's save files (the four save slots) with its settings and controls. A backup is a small zip file:
+        keep it, or restore it on another TV. Restoring while the game runs takes effect when it starts again.</p>
+      <table><tbody id="save-list"></tbody></table>
+      <div class="row">
+        <a id="backup-download" class="button" href="#" download="web-mario-64-saves.zip">Download backup</a>
+        <label class="button secondary" for="backup-file">Restore a backup</label>
+        <input id="backup-file" type="file" accept=".zip">
+      </div>
+      <p id="save-message"></p>
+    </section>
+
+    <section>
+      <h2>Root and USB</h2>
+      <p id="root-line">Loading...</p>
+      <table><tbody id="drive-list"></tbody></table>
+    </section>
+
+    <section>
+      <h2>Trouble?</h2>
+      <p id="crash-line" class="warn hidden">The game crashed at the last launch: its logs are the "last launch" ones below.
+        The TV starts the game again when OK is pressed, or after 30 seconds.</p>
+      <p class="dim">The logs help when reporting a problem.
+        <a id="log-link" href="#" target="_blank" rel="noopener">The game's log</a>;
+        the app's start-up log: <a id="portlog-link" href="#" target="_blank" rel="noopener">this launch</a>,
+        <a id="portlog-previous-link" href="#" target="_blank" rel="noopener">the last launch</a>.</p>
+    </section>
+  </div>
+
+  <footer class="dim">
+    Web Mario 64<span id="app-version"></span> &middot;
+    <a href="https://github.com/pustal/Web-Mario-64/" target="_blank" rel="noopener">github.com/pustal/Web-Mario-64</a><br>
+    Built on <a href="https://github.com/HarbourMasters/Ghostship" target="_blank" rel="noopener">Ghostship</a> by HarbourMasters,
+    from the Super Mario 64 decompilation. Super Mario 64 is a trademark of Nintendo; this app ships no Nintendo game data.
+  </footer>
+</main>
+
+<script>
+'use strict';
+
+/**
+ * @typedef {{ name: string, size: number, folder: boolean }} Mod
+ * @typedef {{ mount: string, label: string, spaceKnown: boolean, freeBytes: number, totalBytes: number,
+ *             readable: boolean, writable: boolean, romFile: string, modsFolder: boolean, mods: Mod[] }} Drive
+ * @typedef {{ process: boolean, homebrewChannel: boolean, detail: string }} RootState
+ * @typedef {{ running: boolean, finished: boolean, succeeded: boolean, done: number, total: number, error: string }} Extraction
+ * @typedef {{ version: string, mode: 'setup'|'game', persistent: boolean, freeBytes: number,
+ *             safetyMarginBytes: number, driveFolder: string, restartPending: boolean, crashedLastTime: boolean,
+ *             event: { serial: number, text: string }, progress: { busy: boolean, what: string, done: number, total: number },
+ *             root: RootState, rom: { present: boolean, name: string, importedFrom: string },
+ *             archive: { present: boolean, size: number, rebuildPending: boolean }, extraction: Extraction,
+ *             mods: Mod[], drives: Drive[] }} Status
+ * @typedef {{ path: string, size: number, mtime: number }} SaveFile
+ * @typedef {{ value: string, label: string, free: number }} Target
+ */
+
+/** Session-only so the PIN is forgotten when the tab closes. */
+const PIN_KEY = 'web-mario-64-pin';
+const REFRESH_MS = 3000;
+/** Must match RomFile::kRomBytes on the TV. */
+const ROM_BYTES = 8 * 1024 * 1024;
+/** Must match Storage::kMaxModBytes on the TV. */
+const MAX_MOD_BYTES = 2048 * 1024 * 1024;
+
+/** @type {Status | null} */
+let lastStatus = null;
+/** True while this page uploads or moves something (refreshes keep the controls as they are). */
+let working = false;
+
+/** @param {string} id @returns {HTMLElement} */
+function byId(id) {
+  const element = document.getElementById(id);
+  if (!element) throw new Error('Missing element #' + id);
+  return element;
+}
+
+/** @param {string} id @returns {HTMLSelectElement} */
+function selectById(id) { return /** @type {HTMLSelectElement} */ (byId(id)); }
+
+/** @param {number} bytes @returns {string} */
+function humanBytes(bytes) {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
+  return (unit === 0 ? value.toFixed(0) : value.toFixed(1)) + ' ' + units[unit];
+}
+
+/** @param {HTMLElement} element @param {string} text @param {''|'ok'|'warn'|'dim'} [kind] */
+function say(element, text, kind = '') {
+  element.textContent = text;
+  element.className = kind;
+}
+
+/** @returns {string} */
+function pin() { return sessionStorage.getItem(PIN_KEY) || ''; }
+
+/**
+ * Calls the TV's API with the PIN attached.
+ * @param {string} path @param {RequestInit} [init] @returns {Promise<Response>}
+ */
+async function api(path, init = {}) {
+  const headers = new Headers(init.headers);
+  headers.set('X-Pin', pin());
+  const response = await fetch(path, { ...init, headers });
+  if (response.status === 401) {
+    sessionStorage.removeItem(PIN_KEY);
+    showPinForm('Wrong PIN. Check the number on the TV.');
+    throw new Error('unauthorised');
+  }
+  return response;
+}
+
+/**
+ * PUT with upload progress (fetch cannot report it).
+ * @param {string} url @param {Blob} body @param {(fraction: number) => void} onProgress
+ * @returns {Promise<{ ok: boolean, text: string }>}
+ */
+function putWithProgress(url, body, onProgress) {
+  return new Promise((resolve) => {
+    const request = new XMLHttpRequest();
+    request.open('PUT', url);
+    request.setRequestHeader('X-Pin', pin());
+    request.upload.onprogress = (event) => { if (event.lengthComputable) onProgress(event.loaded / event.total); };
+    request.onload = () => resolve({ ok: request.status === 200, text: request.responseText });
+    request.onerror = () => resolve({ ok: false, text: 'Connection to the TV was lost.' });
+    request.send(body);
+  });
+}
+
+/** @param {string} [error] */
+function showPinForm(error) {
+  byId('pin-section').classList.remove('hidden');
+  byId('app').classList.add('hidden');
+  const message = byId('pin-error');
+  message.textContent = error || '';
+  message.classList.toggle('hidden', !error);
+}
+
+/** @param {Status} status @returns {boolean} */
+function rootAvailable(status) { return status.root.process || status.root.homebrewChannel; }
+
+/** @param {Status} status @param {string} mount @returns {string} */
+function driveLabel(status, mount) {
+  const drive = status.drives.find((candidate) => candidate.mount === mount);
+  return 'USB ' + (drive ? drive.label : mount);
+}
+
+/**
+ * The places a file can go: the TV, then each drive the app (or root) can write to.
+ * @param {Status} status @param {string} folder shown after the drive's name @returns {Target[]}
+ */
+function targets(status, folder) {
+  const list = [{ value: 'internal', label: 'TV (' + humanBytes(status.freeBytes) + ' free)', free: status.freeBytes }];
+  for (const drive of status.drives) {
+    if ((drive.writable || rootAvailable(status)) && drive.spaceKnown) {
+      list.push({ value: drive.mount, label: 'USB ' + drive.label + ' / ' + folder + ' (' + humanBytes(drive.freeBytes) + ' free)',
+                  free: drive.freeBytes });
+    }
+  }
+  return list;
+}
+
+/**
+ * Fills a select with @p list, keeping its choice when it is still there.
+ * @param {HTMLSelectElement} select @param {Target[]} list
+ */
+function fillTargets(select, list) {
+  const previous = select.value;
+  select.replaceChildren(...list.map((target) => new Option(target.label, target.value)));
+  if (list.some((target) => target.value === previous)) select.value = previous;
+}
+
+/** @param {...(string|Node)} children @returns {HTMLTableCellElement} */
+function cell(...children) {
+  const element = document.createElement('td');
+  element.append(...children);
+  return element;
+}
+
+/** @param {string} text @param {() => void} onClick @param {string} [className] @returns {HTMLButtonElement} */
+function button(text, onClick, className = 'secondary small') {
+  const element = document.createElement('button');
+  element.type = 'button';
+  element.className = className;
+  element.textContent = text;
+  element.addEventListener('click', onClick);
+  return element;
+}
+
+// ---------------------------------------------------------------- status
+
+async function refreshStatus() {
+  const response = await api('/api/status');
+  /** @type {Status} */
+  const status = await response.json();
+  lastStatus = status;
+  byId('app-version').textContent = ' ' + status.version;
+  byId('pin-section').classList.add('hidden');
+  byId('app').classList.remove('hidden');
+  byId('rom-folder').textContent = status.driveFolder;
+  byId('mods-folder').textContent = status.driveFolder;
+
+  say(byId('mode-line'), status.mode === 'game' ? 'The game is running on the TV.'
+    : status.extraction.running ? 'The TV is preparing the game from the ROM.'
+    : status.crashedLastTime && status.archive.present ? 'The game crashed last time: the TV starts it on OK, or after 30 seconds (see Trouble? below).'
+    : 'The TV is waiting for the ROM: the game starts as soon as it is ready.', status.mode === 'setup' ? 'warn' : 'ok');
+  say(byId('space-line'), 'Free space on the TV: ' + humanBytes(status.freeBytes)
+    + (status.persistent ? '' : '. Warning: the app could not find its storage, nothing is kept after it closes.'), 'dim');
+  byId('event-line').textContent = status.event.text;
+  const progress = /** @type {HTMLProgressElement} */ (byId('busy-progress'));
+  progress.classList.toggle('hidden', !status.progress.busy);
+  if (status.progress.busy && status.progress.total > 0) progress.value = 100 * status.progress.done / status.progress.total;
+  byId('restart-section').classList.toggle('hidden', !status.restartPending || status.mode !== 'game');
+
+  renderGame(status);
+  renderMods(status);
+  renderRootAndDrives(status);
+  byId('log-link').setAttribute('href', '/api/log?pin=' + encodeURIComponent(pin()));
+  byId('portlog-link').setAttribute('href', '/api/portlog?pin=' + encodeURIComponent(pin()));
+  byId('portlog-previous-link').setAttribute('href', '/api/portlog?previous=1&pin=' + encodeURIComponent(pin()));
+  byId('crash-line').classList.toggle('hidden', !status.crashedLastTime);
+  byId('backup-download').setAttribute('href', '/api/saves/backup?pin=' + encodeURIComponent(pin()));
+}
+
+/** @param {Status} status */
+function renderGame(status) {
+  const extraction = status.extraction;
+  const bar = /** @type {HTMLProgressElement} */ (byId('extract-progress'));
+  bar.classList.toggle('hidden', !extraction.running);
+  if (extraction.running) {
+    bar.value = extraction.total > 0 ? 100 * extraction.done / extraction.total : 0;
+    say(byId('game-line'), 'Preparing the game from ' + (status.rom.name || 'the ROM') + '... '
+      + (extraction.total > 0 ? Math.floor(100 * extraction.done / extraction.total) + '%' : ''), '');
+  } else if (extraction.finished && !extraction.succeeded) {
+    say(byId('game-line'), 'The game could not be prepared from this ROM: ' + extraction.error + ' Upload another copy.', 'warn');
+  } else if (status.archive.present) {
+    say(byId('game-line'), 'Ready (archive ' + humanBytes(status.archive.size) + ')'
+      + (status.rom.present ? ', made from ' + (status.rom.name || 'your ROM') : '')
+      + (status.rom.importedFrom ? ', copied from ' + status.rom.importedFrom : '')
+      + (status.archive.rebuildPending ? '. It is made again from the ROM at the next start.' : '.'), 'ok');
+  } else if (status.rom.present) {
+    say(byId('game-line'), (status.rom.name || 'The ROM') + ' is on the TV; the game is prepared from it.', '');
+  } else {
+    say(byId('game-line'), 'No ROM yet.', 'warn');
+  }
+  byId('archive-rebuild').classList.toggle('hidden', !(status.rom.present && status.archive.present && status.mode === 'game'));
+  byId('rom-remove').classList.toggle('hidden', !status.rom.present || extraction.running);
+}
+
+/** @param {Status} status */
+function renderMods(status) {
+  if (working) return;
+  fillTargets(selectById('mod-target'), targets(status, status.driveFolder + '/mods'));
+
+  /** @type {{ place: string, placeLabel: string, mod: Mod }[]} */
+  const all = status.mods.map((mod) => ({ place: 'internal', placeLabel: 'TV', mod }));
+  for (const drive of status.drives) {
+    for (const mod of drive.mods) all.push({ place: drive.mount, placeLabel: 'USB ' + drive.label, mod });
+  }
+  const list = byId('mod-list');
+  list.replaceChildren();
+  if (all.length === 0) {
+    const row = document.createElement('tr');
+    const empty = cell('No mods yet.');
+    empty.className = 'dim';
+    row.append(empty);
+    list.append(row);
+    return;
+  }
+  const places = targets(status, 'mods');
+  for (const entry of all) {
+    const row = document.createElement('tr');
+    const name = cell(entry.mod.name);
+    const where = cell(entry.placeLabel);
+    where.className = 'dim';
+    const size = cell(entry.mod.folder ? 'folder' : humanBytes(entry.mod.size));
+    size.className = 'size';
+    const actions = cell();
+    actions.className = 'actions';
+    if (!entry.mod.folder) {
+      for (const destination of places.filter((target) => target.value !== entry.place)) {
+        const short = destination.value === 'internal' ? 'TV' : 'USB ' + destination.label.split(' ')[1];
+        actions.append(button('To ' + short, () => moveMod(entry.mod.name, entry.place, destination.value)));
+      }
+    }
+    actions.append(button('Remove', () => removeMod(entry.mod.name, entry.place)));
+    row.append(name, where, size, actions);
+    list.append(row);
+  }
+}
+
+/** @param {Status} status */
+function renderRootAndDrives(status) {
+  const root = status.root;
+  say(byId('root-line'), root.process ? 'Root access: yes (the app runs as root).'
+    : root.homebrewChannel ? 'Root access: yes, through the Homebrew Channel.'
+    : 'Root access: no. ' + root.detail, rootAvailable(status) ? 'ok' : 'dim');
+
+  const list = byId('drive-list');
+  list.replaceChildren();
+  if (status.drives.length === 0) {
+    const row = document.createElement('tr');
+    const empty = cell('No USB drive found. Plug one into the TV to bring the ROM or keep mods on it.');
+    empty.className = 'dim';
+    row.append(empty);
+    list.append(row);
+    return;
+  }
+  for (const drive of status.drives) {
+    const row = document.createElement('tr');
+    const space = drive.spaceKnown ? humanBytes(drive.freeBytes) + ' free of ' + humanBytes(drive.totalBytes) : 'space unknown';
+    const access = drive.writable ? 'the app can read and write it'
+      : drive.readable ? 'the app can read it' + (rootAvailable(status) ? ', root writes to it' : ' but not write to it')
+      : rootAvailable(status) ? 'the app reads and writes it through root' : 'the app cannot use it without root access';
+    const holds = [];
+    if (drive.romFile) holds.push('ROM (' + drive.romFile + ')');
+    if (drive.mods.length > 0) holds.push(drive.mods.length + (drive.mods.length === 1 ? ' mod' : ' mods'));
+    row.append(cell('USB ' + drive.label + ': ' + space + '; ' + access + '.'
+      + (holds.length ? ' Holds: ' + holds.join(', ') + '.' : '')));
+    list.append(row);
+  }
+}
+
+// ---------------------------------------------------------------- the ROM
+
+/** @param {File} file */
+async function uploadRom(file) {
+  const message = byId('rom-message');
+  if (file.size !== ROM_BYTES) {
+    say(message, file.name + ' is ' + humanBytes(file.size) + '; a Super Mario 64 ROM is exactly 8 MB.', 'warn');
+    return;
+  }
+  working = true;
+  say(message, 'Uploading ' + file.name + '...');
+  const result = await putWithProgress('/api/rom', file, (fraction) => {
+    say(message, 'Uploading ' + file.name + '... ' + Math.floor(fraction * 100) + '%');
+  });
+  working = false;
+  say(message, !result.ok ? result.text
+    : result.text === 'installed' ? 'ROM received. The TV is preparing the game (a minute or two).'
+    : 'ROM received. The game is prepared from it at the next start (use Restart).', result.ok ? 'ok' : 'warn');
+  await refreshStatus().catch(() => {});
+}
+
+async function removeRom() {
+  if (!confirm('Remove the ROM from the TV? The game keeps running from its archive, but cannot be prepared again without it.')) return;
+  const response = await api('/api/rom', { method: 'DELETE' });
+  say(byId('rom-message'), response.ok ? 'ROM removed.' : await response.text(), response.ok ? 'ok' : 'warn');
+  await refreshStatus().catch(() => {});
+}
+
+async function rebuildArchive() {
+  const response = await api('/api/archive/rebuild', { method: 'POST' });
+  say(byId('rom-message'), response.ok ? 'The archive is made again at the next start (use Restart).' : await response.text(),
+    response.ok ? 'ok' : 'warn');
+  await refreshStatus().catch(() => {});
+}
+
+// ---------------------------------------------------------------- mods
+
+/** @param {FileList} files */
+async function uploadMods(files) {
+  const message = byId('mod-message');
+  const drive = selectById('mod-target').value || 'internal';
+  working = true;
+  const results = [];
+  for (const file of Array.from(files)) {
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith('.o2r') && !lower.endsWith('.otr')) { results.push(file.name + ': not an .o2r or .otr file.'); continue; }
+    if (file.size > MAX_MOD_BYTES) { results.push(file.name + ': too large.'); continue; }
+    say(message, 'Uploading ' + file.name + '...');
+    const result = await putWithProgress('/api/mods/' + encodeURIComponent(file.name) + '?drive=' + encodeURIComponent(drive), file,
+      (fraction) => say(message, 'Uploading ' + file.name + '... ' + Math.floor(fraction * 100) + '%'));
+    results.push(file.name + ': ' + (result.ok ? 'added.' : result.text));
+  }
+  working = false;
+  say(message, results.join(' ') + ' The game loads them at its next start.',
+    results.every((line) => line.endsWith('added.')) ? 'ok' : 'warn');
+  await refreshStatus().catch(() => {});
+}
+
+/** @param {string} name @param {string} from @param {string} to */
+async function moveMod(name, from, to) {
+  const message = byId('mod-message');
+  working = true;
+  say(message, 'Moving ' + name + '...');
+  const response = await api('/api/mods/' + encodeURIComponent(name) + '/move?from=' + encodeURIComponent(from)
+    + '&drive=' + encodeURIComponent(to), { method: 'POST' });
+  working = false;
+  say(message, response.ok ? name + ' moved.' : await response.text(), response.ok ? 'ok' : 'warn');
+  await refreshStatus().catch(() => {});
+}
+
+/** @param {string} name @param {string} place */
+async function removeMod(name, place) {
+  if (!confirm('Remove ' + name + '?')) return;
+  const response = await api('/api/mods/' + encodeURIComponent(name) + '?drive=' + encodeURIComponent(place), { method: 'DELETE' });
+  say(byId('mod-message'), response.ok ? name + ' removed.' : await response.text(), response.ok ? 'ok' : 'warn');
+  await refreshStatus().catch(() => {});
+}
+
+// ---------------------------------------------------------------- saves
+
+async function refreshSaves() {
+  const response = await api('/api/saves');
+  /** @type {{ saves: SaveFile[], pendingRestore: boolean }} */
+  const data = await response.json();
+  const list = byId('save-list');
+  list.replaceChildren();
+  if (data.saves.length === 0) {
+    const row = document.createElement('tr');
+    const empty = cell('No saves yet.');
+    empty.className = 'dim';
+    row.append(empty);
+    list.append(row);
+  }
+  for (const save of data.saves) {
+    const row = document.createElement('tr');
+    const when = cell(save.mtime ? new Date(save.mtime * 1000).toLocaleString() : '');
+    when.className = 'dim';
+    const size = cell(humanBytes(save.size));
+    size.className = 'size';
+    row.append(cell(save.path), when, size);
+    list.append(row);
+  }
+  if (data.pendingRestore) say(byId('save-message'), 'A backup is waiting to be restored when the game starts again.', 'warn');
+}
+
+/** @param {File} file */
+async function restoreBackup(file) {
+  const message = byId('save-message');
+  if (!confirm('Restore ' + file.name + '? The saves it holds replace the ones on the TV.')) return;
+  say(message, 'Uploading ' + file.name + '...');
+  const result = await putWithProgress('/api/saves/backup', file, () => {});
+  say(message, !result.ok ? result.text
+    : result.text === 'installed' ? 'Saves restored.'
+    : 'Backup received: it is restored when the game starts again (use Restart).', result.ok ? 'ok' : 'warn');
+  await refreshSaves().catch(() => {});
+  await refreshStatus().catch(() => {});
+}
+
+// ---------------------------------------------------------------- wiring
+
+async function restartGame() {
+  const response = await api('/api/restart', { method: 'POST' });
+  say(byId('restart-message'), response.ok ? 'Restarting... the page reconnects in a moment.' : await response.text(),
+    response.ok ? 'ok' : 'warn');
+}
+
+/** @param {string} id @param {(file: File) => void} handler */
+function onFileChosen(id, handler) {
+  const input = /** @type {HTMLInputElement} */ (byId(id));
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (file) handler(file);
+  });
+}
+
+byId('pin-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const value = /** @type {HTMLInputElement} */ (byId('pin-input')).value.trim();
+  sessionStorage.setItem(PIN_KEY, value);
+  try {
+    await refreshStatus();
+    await refreshSaves();
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== 'unauthorised') showPinForm('Could not reach the TV.');
+  }
+});
+
+onFileChosen('rom-file', uploadRom);
+onFileChosen('backup-file', restoreBackup);
+const modInput = /** @type {HTMLInputElement} */ (byId('mod-files'));
+modInput.addEventListener('change', () => {
+  const files = modInput.files;
+  if (files && files.length) uploadMods(files).finally(() => { modInput.value = ''; });
+});
+byId('rom-remove').addEventListener('click', removeRom);
+byId('archive-rebuild').addEventListener('click', rebuildArchive);
+byId('restart').addEventListener('click', restartGame);
+
+setInterval(() => {
+  if (pin() && !document.hidden) refreshStatus().catch(() => {});
+}, REFRESH_MS);
+
+if (pin()) {
+  refreshStatus().then(refreshSaves).catch(() => showPinForm());
+}
+</script>
+</body>
+</html>

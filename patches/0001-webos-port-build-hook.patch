@@ -1,0 +1,58 @@
+Web Mario 64: hook the webOS port into Ghostship's build
+
+Ghostship's CMakeLists.txt gains an option, GHOSTSHIP_WEBOS_PORT, set by Web
+Mario 64's top-level build. With it:
+- cmake/GhostshipWebOS.cmake (in Web Mario 64) is included after project():
+  wm64_setup_platform() sets up OpenGL ES 3, SDL-webOS and the libraries the
+  webOS sysroot lacks;
+- desktop OpenGL is not looked for on webOS (the TV only has OpenGL ES);
+- on webOS, scripting (TinyCC) stays off and the Switch-only dependency branch
+  is skipped;
+- wm64_add_port() adds the port layer to the Ghostship target once it exists.
+Without the option nothing changes.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -4,6 +4,13 @@
+ project(Ghostship VERSION 3.0.0 LANGUAGES C CXX ASM)
+ include(FetchContent)
+ 
++# Web Mario 64 (the LG webOS port): its platform setup and port layer.
++option(GHOSTSHIP_WEBOS_PORT "Built by Web Mario 64 (webOS port, or its desktop test version)" OFF)
++if(GHOSTSHIP_WEBOS_PORT)
++    include("${WM64_ROOT}/cmake/GhostshipWebOS.cmake")
++    wm64_setup_platform()
++endif()
++
+ include(cmake/ghostship-cvars.cmake)
+ include(cmake/lus-cvars.cmake)
+ 
+@@ -255,7 +262,7 @@
+ endif()
+ 
+ # Find necessary libraries
+-if (UNIX AND NOT APPLE AND NOT ANDROID)
++if (UNIX AND NOT APPLE AND NOT ANDROID AND NOT WM64_TARGET_WEBOS)
+ find_package(OpenGL REQUIRED)
+ endif()
+ 
+@@ -569,6 +576,8 @@
+     FetchContent_MakeAvailable(tinyxml2 nlohmann_json spdlog libzip)
+     # zip.h/zipconf.h for libultraship headers included by game code.
+     target_include_directories(${PROJECT_NAME} PRIVATE ${libzip_SOURCE_DIR}/lib ${libzip_BINARY_DIR})
++elseif(WM64_TARGET_WEBOS)
++    # Set by cmake/GhostshipWebOS.cmake (no scripting; libraries already fetched).
+ elseif(NOT CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+     set(ENABLE_SCRIPTING ON CACHE BOOL "" FORCE)
+ else()
+@@ -824,6 +833,10 @@
+ endif()
+ 
+ target_link_libraries(${PROJECT_NAME} PRIVATE "${ADDITIONAL_LIBRARY_DEPENDENCIES}")
++
++if(GHOSTSHIP_WEBOS_PORT)
++    wm64_add_port(${PROJECT_NAME})
++endif()
+ ################################################################################
+ # Compile and link options
+ ################################################################################

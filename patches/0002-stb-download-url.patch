@@ -1,0 +1,20 @@
+Web Mario 64: download stb_image.h from raw.githubusercontent.com
+
+libultraship downloads stb_image.h at configure time from a github.com/.../raw/
+address, which answers with a redirect to raw.githubusercontent.com. Some proxies
+and CI setups refuse the redirect, file(DOWNLOAD) then leaves an empty header
+and the build fails much later ("stbi_load_from_memory was not declared"). The
+direct address serves the same file (same commit).
+
+
+--- a/libultraship/cmake/dependencies/common.cmake
++++ b/libultraship/cmake/dependencies/common.cmake
+@@ -168,7 +168,7 @@ endif()
+ 
+ #=================== STB ===================
+ set(STB_DIR ${CMAKE_BINARY_DIR}/_deps/stb)
+-file(DOWNLOAD "https://github.com/nothings/stb/raw/0bc88af4de5fb022db643c2d8e549a0927749354/stb_image.h" "${STB_DIR}/stb_image.h")
++file(DOWNLOAD "https://raw.githubusercontent.com/nothings/stb/0bc88af4de5fb022db643c2d8e549a0927749354/stb_image.h" "${STB_DIR}/stb_image.h")
+ file(WRITE "${STB_DIR}/stb_impl.c" "#define STB_IMAGE_IMPLEMENTATION\n#include \"stb_image.h\"")
+ 
+ add_library(stb STATIC)
