@@ -101,8 +101,17 @@ bool HandleDeviceEvent(const SDL_Event &event)
 
 bool FilterForGame(SDL_Event *event)
 {
-    // The game still sees device events: it opens the joysticks itself.
-    HandleDeviceEvent(*event);
+    // Device events go to the game untouched: libultraship opens and closes
+    // the controllers itself (the port opening them too, as 1.1.0 did, is
+    // not needed for the menu shortcuts and is best left out). They are
+    // noted in the port's log, to tell later whether a controller was seen.
+    if (event->type == SDL_CONTROLLERDEVICEADDED) {
+        const char *name = SDL_GameControllerNameForIndex(event->cdevice.which);
+        Log::Printf("controller connected: %s", name ? name : "(no name)");
+    }
+    else if (event->type == SDL_CONTROLLERDEVICEREMOVED) {
+        Log::Printf("controller disconnected (id %d)", static_cast<int>(event->cdevice.which));
+    }
 
     if (RemoteInput::IsMenuOpenRequest(*event) || CompletesMenuCombo(*event)) {
         // Back closes Ghostship's own menu when it is shown; otherwise it opens the port's.

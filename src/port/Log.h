@@ -28,9 +28,18 @@ std::string Path();
  * the addresses of the calls that led there (the executable is not
  * position-independent: `addr2line -e <build>/ghostship/Ghostship <address>` on
  * the unstripped build names them), then lets the signal end the app as
- * before. Call after Open().
+ * before, without a core dump: the kernel would write the whole process
+ * image (hundreds of MB) as core.<pid> into the working directory, in the
+ * app's own storage. Call after Open().
  */
 void InstallCrashHandler();
+
+/**
+ * Removes core dumps ("core" or "core.<pid>" files) left in @p dir by crashes
+ * of versions that did not turn them off. Not recursive.
+ * @return The bytes freed.
+ */
+unsigned long long RemoveCoreDumps(const std::string &dir);
 
 /**
  * The file the crash handler creates when the app crashes (a fatal signal), so

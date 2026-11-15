@@ -2,7 +2,7 @@
 
 # Web Mario 64
 
-**Version 1.1.0** · Super Mario 64 for LG webOS TVs, built from
+**Version 1.1.1** · Super Mario 64 for LG webOS TVs, built from
 [Ghostship](https://github.com/HarbourMasters/Ghostship), HarbourMasters' PC port of the Super Mario 64
 decompilation, as a **native** app (SDL2, OpenGL ES 3), with a few TV-friendly extras:
 
@@ -78,8 +78,9 @@ between the TV and a drive at any time, even while the game runs (the next start
 On a controller, the Guide button, or Back and Start together, open the menu. In the menu, move with the
 arrows (or 2/8), choose with OK, 0 or A, and resume with Back or B. **Game settings** opens Ghostship's
 own menu (graphics, audio, controls and its enhancements). Move through it with the arrows: they pick a
-panel, OK enters it, and inside the arrows move between settings and OK changes one (a controller works
-the same way, with B to leave a panel). Back closes it. While it is open the remote keys are not remapped. The mapping lives in
+panel, OK enters it, and inside the arrows move between settings and OK changes one. A controller can
+move through it too once **Menu Controller Navigation** is on (Settings, General); while the menu is open
+it then drives the menu instead of the game. Back closes it. While it is open the remote keys are not remapped. The mapping lives in
 `src/port/RemoteInput.cpp` (`kMappings`); the game's own controls (Game settings, Controller) still apply
 on top.
 

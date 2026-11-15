@@ -106,9 +106,10 @@ std::shared_ptr<Ship::GuiWindow> GameMenu()
 /**
  * Shows or hides Ghostship's settings menu, made usable without a mouse: the
  * remote's arrows and OK move through it (keyboard navigation), and so does a
- * controller (the "Menu Controller Navigation" setting, on by default here as
- * on a console; it can still be turned off in the menu). libultraship sets its
- * navigation flags only when it opens the menu itself, so they are set here too.
+ * controller when the player turned on its "Menu Controller Navigation"
+ * setting (off by default, as upstream: while the menu is open it takes the
+ * controller away from the game). libultraship sets its navigation flags only
+ * when it opens the menu itself, so they are set here too.
  * Runs on the game's thread (event filter or the port's menu).
  */
 void ToggleGameMenu()
@@ -116,7 +117,6 @@ void ToggleGameMenu()
     const std::shared_ptr<Ship::GuiWindow> menu = GameMenu();
     if (!menu)
         return;
-    CVarRegisterInteger(kControllerNavCVar, 1);
     menu->ToggleVisibility();
 
     ImGuiIO &io = ImGui::GetIO();
@@ -155,6 +155,10 @@ int main(int argc, char **argv)
     Log::Printf("Web Mario 64 %s; data folder: %s%s", WM64_VERSION, storage.Root().c_str(), storage.Persistent() ? "" : " (temporary)");
     if (crashedLastTime)
         Log::Printf("the last launch crashed");
+    // Core dumps of crashes before 1.1.1 (the game's working folder, ship/, is where the kernel wrote them).
+    const unsigned long long coreBytes = Log::RemoveCoreDumps(storage.ShipDir()) + Log::RemoveCoreDumps(storage.Root());
+    if (coreBytes > 0)
+        Log::Printf("removed old crash dumps (%s)", HumanBytes(coreBytes).c_str());
 
     // 3. Saves restored from the transfer page while the game was running.
     storage.ApplyPendingBackup();

@@ -4,9 +4,12 @@
  */
 #include "Log.h"
 
+#include <dirent.h>
 #include <execinfo.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <array>
@@ -15,6 +18,8 @@
 #include <cstdio>
 #include <cstring>
 #include <mutex>
+#include <vector>
+#include <string>
 
 namespace wm64
 {
@@ -101,6 +106,35 @@ void InstallCrashHandler()
     backtrace(warmUp.data(), static_cast<int>(warmUp.size()));
     for (const int signal : { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT })
         ::signal(signal, OnFatalSignal);
+    // No core dumps: on a TV they only fill the app's storage (see Log.h).
+    const struct rlimit noCore = { 0, 0 };
+    setrlimit(RLIMIT_CORE, &noCore);
+}
+
+unsigned long long RemoveCoreDumps(const std::string &dir)
+{
+    unsigned long long freed = 0;
+    DIR *folder = opendir(dir.c_str());
+    if (!folder)
+        return 0;
+    std::vector<std::string> dumps;
+    while (const struct dirent *entry = readdir(folder)) {
+        const std::string name = entry->d_name;
+        // "core", or "core." followed by digits (the crashed process' id).
+        const bool numbered = name.size() > 5 && name.compare(0, 5, "core.") == 0
+                              && name.find_first_not_of("0123456789", 5) == std::string::npos;
+        if (name == "core" || numbered)
+            dumps.push_back(dir + "/" + name);
+    }
+    closedir(folder);
+    for (const std::string &path : dumps) {
+        struct stat info {};
+        if (lstat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode))
+            continue;
+        if (unlink(path.c_str()) == 0)
+            freed += static_cast<unsigned long long>(info.st_size);
+    }
+    return freed;
 }
 
 std::string Path()
