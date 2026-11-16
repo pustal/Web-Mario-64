@@ -187,7 +187,7 @@ const REFRESH_MS = 3000;
 /** Must match RomFile::kRomBytes on the TV. */
 const ROM_BYTES = 8 * 1024 * 1024;
 /** Must match Storage::kMaxModBytes on the TV. */
-const MAX_MOD_BYTES = 2048 * 1024 * 1024;
+const MAX_MOD_BYTES = 4 * 1024 * 1024 * 1024 - 1;
 
 /** @type {Status | null} */
 let lastStatus = null;
@@ -529,14 +529,18 @@ async function uploadMods(files) {
   for (const file of Array.from(files)) {
     const lower = file.name.toLowerCase();
     if (!lower.endsWith('.o2r') && !lower.endsWith('.otr')) { results.push(file.name + ': not an .o2r or .otr file.'); continue; }
-    if (file.size > MAX_MOD_BYTES) { results.push(file.name + ': too large.'); continue; }
+    if (file.size > MAX_MOD_BYTES) {
+      results.push(file.name + ' is ' + humanBytes(file.size) + ': mods up to 4 GB can be uploaded (the largest file a FAT32 USB drive holds).');
+      continue;
+    }
     say(message, 'Uploading ' + file.name + '...');
     const result = await putWithProgress('/api/mods/' + encodeURIComponent(file.name) + '?drive=' + encodeURIComponent(drive), file,
       (fraction) => say(message, 'Uploading ' + file.name + '... ' + Math.floor(fraction * 100) + '%'));
     results.push(file.name + ': ' + (result.ok ? 'added.' : result.text));
   }
   working = false;
-  say(message, results.join(' ') + ' The game loads them at its next start.',
+  const anyAdded = results.some((line) => line.endsWith('added.'));
+  say(message, results.join(' ') + (anyAdded ? ' The game loads them at its next start.' : ''),
     results.every((line) => line.endsWith('added.')) ? 'ok' : 'warn');
   await refreshStatus().catch(() => {});
 }

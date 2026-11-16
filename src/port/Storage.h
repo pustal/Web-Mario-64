@@ -53,8 +53,14 @@ public:
     static constexpr std::uint64_t kSafetyMarginBytes = 32ull * 1024ull * 1024ull;
     /** Space the archive needs when it is made from the ROM (it is about 10 MB; with room to spare). */
     static constexpr std::uint64_t kArchiveSpaceBytes = 96ull * 1024ull * 1024ull;
-    /** Largest mod archive accepted (texture packs can be large). */
-    static constexpr std::uint64_t kMaxModBytes = 2048ull * 1024ull * 1024ull;
+    /**
+     * Largest mod archive accepted (HD texture packs can be several GB): just
+     * under 4 GiB, the largest file a FAT32 USB drive holds, and the largest
+     * upload the 32-bit TV build's HTTP server can count (its sizes are size_t).
+     * Files above 2 GiB need large file support, which the webOS build turns on
+     * (_FILE_OFFSET_BITS=64, cmake/GhostshipWebOS.cmake).
+     */
+    static constexpr std::uint64_t kMaxModBytes = 4ull * 1024ull * 1024ull * 1024ull - 1ull;
     /** Largest save backup accepted (saves are a few KB). */
     static constexpr std::uint64_t kMaxBackupBytes = 64ull * 1024ull * 1024ull;
 

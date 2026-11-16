@@ -2,7 +2,7 @@
 
 # Web Mario 64
 
-**Version 1.1.1** · Super Mario 64 for LG webOS TVs, built from
+**Version 1.1.2** · Super Mario 64 for LG webOS TVs, built from
 [Ghostship](https://github.com/HarbourMasters/Ghostship), HarbourMasters' PC port of the Super Mario 64
 decompilation, as a **native** app (SDL2, OpenGL ES 3), with a few TV-friendly extras:
 
@@ -92,7 +92,8 @@ PIN shown on the TV. It shows:
 - **Game**: where the ROM and the archive are, upload the ROM to the TV or a USB drive (or remove it),
   move the game files between the TV and a drive, the progress while the archive is made, and
   **Make the archive again**.
-- **Mods**: upload `.o2r`/`.otr` mods to the TV or a USB drive, move or remove them. Ghostship loads them
+- **Mods**: upload `.o2r`/`.otr` mods (up to 4 GB each, the largest file a FAT32 drive holds) to the TV or a
+  USB drive, move or remove them. Ghostship loads them
   at start-up; turn them on and off in its menu (Game settings, Mods).
 - **Saves**: the save files, **Download backup** (a small zip file with the saves and the settings) and
   **Restore a backup**.

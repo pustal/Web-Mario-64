@@ -19,7 +19,7 @@
 # (SDL2 and OpenGL from the system), used to try the port layer under Xvfb.
 
 cmake_minimum_required(VERSION 3.24)
-project(WebMario64 VERSION 1.1.1 LANGUAGES C CXX)
+project(WebMario64 VERSION 1.1.2 LANGUAGES C CXX)
 
 set(WM64_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${WM64_ROOT}/cmake")

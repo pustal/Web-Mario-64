@@ -175,7 +175,10 @@ void __wrap_SDL_GL_SwapWindow(SDL_Window *window)
     static bool firstFrame = true;
     if (firstFrame) {
         firstFrame = false;
-        wm64::Log::Printf("the game drew its first frame");
+        // The size the game really draws at (the TV's own surface, not the size the game asked for).
+        int width = 0, height = 0;
+        SDL_GL_GetDrawableSize(window, &width, &height);
+        wm64::Log::Printf("the game drew its first frame (%dx%d)", width, height);
     }
     wm64::MenuOverlay::OnSwap(window, &__real_SDL_GL_SwapWindow);
     __real_SDL_GL_SwapWindow(window);

@@ -51,6 +51,12 @@ macro(wm64_setup_platform)
             set(CMAKE_${_wm64_lang}_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED TRUE)
         endforeach()
 
+        # --- Large files: the TV build is 32-bit ARM, where off_t is 32 bits unless
+        # asked otherwise. HD texture packs are larger than 2 GiB: everything built
+        # from here on (Ghostship, libultraship, libzip, the port) uses 64-bit file
+        # offsets, so they can be uploaded, stored and read.
+        add_compile_definitions(_FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
+
         # --- Graphics: OpenGL ES 3. libultraship's GL backend then uses GLSL ES 3.00.
         set(USE_OPENGLES ON CACHE BOOL "Enable GLES3" FORCE)
         add_compile_definitions(USE_OPENGLES=1)

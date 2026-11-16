@@ -593,7 +593,7 @@ void TransferServer::RegisterModRoutes()
         if (!ContentLength(req, &expected) || expected == 0)
             return Fail(res, 411, "The upload must state its size (Content-Length).");
         if (expected > Storage::kMaxModBytes)
-            return Fail(res, 413, "That is larger than any mod; refusing " + HumanBytes(expected) + ".");
+            return Fail(res, 413, "That file is " + HumanBytes(expected) + "; mods up to 4 GB can be uploaded (the largest file a FAT32 USB drive holds).");
 
         Target target;
         if (!ParseTarget(req.get_param_value("drive"), storage_, usb_, &target, res))
