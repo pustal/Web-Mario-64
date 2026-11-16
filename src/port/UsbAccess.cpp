@@ -649,7 +649,7 @@ void UsbAccess::ReleaseModLinks(const Storage &storage)
         const std::string path = link.string();
         if (IsMountedAt(path)) {
             // Lazy: detaches it even while the game reads through it.
-            RunAsRoot("umount -l " + ShellQuote(path));
+            RunAsRoot("umount -l " + ShellQuote(RootPath(path)));
             fs::remove(link, ec); // the empty folder it covered
         }
         else if (fs::is_symlink(link, ec)) {
@@ -695,9 +695,11 @@ void UsbAccess::PlaceContent(const Storage &storage)
         }
         else if (Root().Available()) {
             fs::create_directories(local, ec);
-            done = RunAsRoot("mount --bind " + ShellQuote(source) + " " + ShellQuote(local)) && CanRead(local);
+            // Made at the jail's copy of the folder: the app, chrooted there, sees it at "local".
+            const std::string target = RootPath(local);
+            done = RunAsRoot("mount --bind " + ShellQuote(source) + " " + ShellQuote(target)) && CanRead(local);
             if (!done)
-                RunAsRoot("umount " + ShellQuote(local));
+                RunAsRoot("umount " + ShellQuote(target));
         }
         if (done) {
             linked.push_back(drive.mountPoint);
@@ -778,6 +780,30 @@ std::string UsbAccess::CopyFileTo(const std::string &source, const std::string &
 }
 
 bool UsbAccess::IsMountPoint(const std::string &path) { return IsMountedAt(path); }
+
+std::string UsbAccess::RootPath(const std::string &appPath)
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (jailRootKnown_)
+            return jailRoot_ == "/" ? appPath : jailRoot_ + appPath;
+    }
+    // Where this process' "/" is, seen from outside: the jail's folder, or "/".
+    std::string root = "/";
+    std::string output;
+    if (Root().Available() && RunAsRoot("readlink /proc/" + std::to_string(static_cast<long>(getpid())) + "/root", &output)) {
+        output.erase(std::remove(output.begin(), output.end(), '\n'), output.end());
+        if (!output.empty() && output.front() == '/')
+            root = output;
+    }
+    while (root.size() > 1 && root.back() == '/')
+        root.pop_back();
+    std::lock_guard<std::mutex> lock(mutex_);
+    jailRoot_      = root;
+    jailRootKnown_ = true;
+    Log::Printf("the app's root, seen by root: %s", root.c_str());
+    return root == "/" ? appPath : root + appPath;
+}
 
 bool UsbAccess::RemoveFile(const std::string &path)
 {

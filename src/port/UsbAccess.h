@@ -10,6 +10,12 @@
  * luna://org.webosbrew.hbchannel.service/exec accepts the app's calls (rooted
  * TVs; newer firmwares may refuse calls from apps).
  *
+ * The jail: homebrew apps run chrooted in /var/palm/jail/<app id>, a private
+ * view of the file system where /tmp/usb (the drives) does not exist, while
+ * root commands (the Homebrew Channel) run outside it. So the app cannot
+ * reach a drive itself, and a bind mount root makes must be made at the
+ * jail's copy of the path (RootPath()) for the app to see it.
+ *
  * A drive keeps the game's files in its "Super Mario 64" folder:
  *   Super Mario 64/<rom>.z64, .n64 or .v64   the ROM (any supported 8 MB dump there;
  *                                            baserom.z64, the name the app gives it, first)
@@ -159,6 +165,14 @@ public:
     std::string CopyFileTo(const std::string &source, const std::string &destination,
                            const std::function<void(std::uint64_t)> &onProgress);
 
+    /**
+     * The path root commands must use for @p appPath (a path as the app sees
+     * it) when the result has to be visible to the app: the same path, or its
+     * copy in the app's jail ("/var/palm/jail/<id>" + @p appPath) when the app
+     * runs chrooted there. Found once, by asking root where this process' root is.
+     */
+    std::string RootPath(const std::string &appPath);
+
     /** Whether @p path is a mount point (spots the app's own bind mounts). */
     static bool IsMountPoint(const std::string &path);
 
@@ -209,6 +223,8 @@ private:
 
     mutable std::mutex mutex_;
     RootStatus root_;
+    std::string jailRoot_;      ///< This process' root as root sees it ("/" when not jailed); see RootPath().
+    bool jailRootKnown_ = false;
     std::vector<std::string> modDrives_;
     std::string romImportedFrom_;
     std::thread searchThread_;

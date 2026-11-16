@@ -127,7 +127,7 @@ void GameFiles::ReleaseLink()
     const std::string path = storage_.ArchivePath();
     // Lazy: detaches the bind mount even while the game still reads through it.
     if (UsbAccess::IsMountPoint(path))
-        usb_.RunAsRoot("umount -l " + UsbAccess::ShellQuote(path));
+        usb_.RunAsRoot("umount -l " + UsbAccess::ShellQuote(usb_.RootPath(path)));
     std::error_code ec;
     const fs::file_status status = fs::symlink_status(path, ec);
     if (fs::is_symlink(status))
@@ -153,11 +153,13 @@ bool GameFiles::Link(const UsbDrive &drive)
         return false;
     // The app cannot read the drive: root shows the file at ship/sm64.o2r.
     std::ofstream(path).close();
-    const bool mounted = usb_.RunAsRoot("mount --bind " + UsbAccess::ShellQuote(source) + " " + UsbAccess::ShellQuote(path));
+    // At the jail's copy of the path (see UsbAccess::RootPath()): the app sees it at "path".
+    const std::string target = usb_.RootPath(path);
+    const bool mounted = usb_.RunAsRoot("mount --bind " + UsbAccess::ShellQuote(source) + " " + UsbAccess::ShellQuote(target));
     if (mounted && access(path.c_str(), R_OK) == 0 && Storage::FileSize(path) > 0)
         return true;
     if (mounted)
-        usb_.RunAsRoot("umount " + UsbAccess::ShellQuote(path));
+        usb_.RunAsRoot("umount " + UsbAccess::ShellQuote(target));
     fs::remove(path, ec);
     return false;
 }

@@ -2,7 +2,7 @@
 
 # Web Mario 64
 
-**Version 1.1.2** · Super Mario 64 for LG webOS TVs, built from
+**Version 1.1.3** · Super Mario 64 for LG webOS TVs, built from
 [Ghostship](https://github.com/HarbourMasters/Ghostship), HarbourMasters' PC port of the Super Mario 64
 decompilation, as a **native** app (SDL2, OpenGL ES 3), with a few TV-friendly extras:
 
